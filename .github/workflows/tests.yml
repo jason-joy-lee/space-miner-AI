@@ -2,7 +2,7 @@ name: Python tests
 on:
   pull_request:
   push:
-    branches: [main, feat/playable-v0-1]
+    branches: [main, feat/playable-v0-1, feat/interactive-learning-v0-4]
 jobs:
   test:
     runs-on: ubuntu-latest
