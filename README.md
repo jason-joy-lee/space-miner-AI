@@ -2,6 +2,18 @@
 
 **Mission 01 — The Hidden Ore Galaxy**: learn machine learning by training a real K-nearest-neighbors (KNN) classifier and making mining decisions under limited resources.
 
+## V0.3 — Understand the vote, play your own strategy
+
+The V0.3 upgrade responds to player feedback:
+
+1. **Inspect a planet** to see the *exact* surveyed planets participating in the KNN majority vote, their confirmed ore/empty labels, weighted sensor distances and a feature-space diagram connecting those examples to the target. The connections are **not physical star-to-star distances**.
+2. **Choose K** and a **sensor focus**: Balanced, Heat ×2, or Spectrum ×2. These settings genuinely alter the Python KNN distance metric and can change votes. Train again to apply changes. The comparative validation results are genuine held-out accuracy scores.
+3. **Strategic scouting:** when inspecting a planet, use the suggested unscanned training example that has the most similar sensors. Scanning costs 5 credits, reveals its confirmed label, and requires retraining; it does not reveal the mining candidate's hidden label.
+4. **Human versus AI:** choose **I say ORE** or **I say EMPTY** before mining. Correct personal predictions award **20 Research XP**, a separate score from mining credits. The AI and player can disagree.
+5. **Experiment:** replay the same galaxy with different K, sensor focus and scouting choices. True mineral labels stay fixed; no algorithm is guaranteed to be right.
+
+The voted classification is not a calibrated probability: for example 2/3 ORE votes predicts ORE but does not mean 66.7% probability.
+
 ## NEW: V0.2 browser game (recommended)
 
 The new interface includes a clickable galaxy map, visual planet selection, discovery zoom animation, KNN recommendations, hidden-label-safe API, and a Builder Mode for learning the math. **Python remains the sole source of actual KNN predictions.**
