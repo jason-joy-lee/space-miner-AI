@@ -148,7 +148,7 @@ def mine_planet(session_id:str,request:MineChoice):
     if not m.trained:raise HTTPException(400,"Train your AI before mining.")
     p=next((p for p in m.world["mining"] if p.id==request.planet_id),None)
     if p is None:raise HTTPException(400,"Choose a valid mining candidate.")
-    predicted,_,votes=knn(known(m),p,m.k)
+    predicted,_,votes=knn(known(m),p,m.k,m.focus)
     try: after,mined_ids=mine(m.credits,m.mined,p)
     except ValueError as exc:raise HTTPException(400,str(exc)) from exc
     old=m.credits;m.credits,m.mined=after,mined_ids
