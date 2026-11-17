@@ -67,6 +67,7 @@ def test_visible_top_tabs_and_teachable_accuracy(game_url):
             # Guided tutorial opens the Train tab automatically.
             expect(page.locator("#page-train")).to_be_visible()
             expect(page.locator("#train")).to_be_visible()
+            page.locator("#tutorial-close").click()
             page.get_by_role("tab",name="Explore Galaxy").click()
             expect(page.locator("#page-explore")).to_be_visible()
             expect(page.locator("#map")).to_be_visible()
