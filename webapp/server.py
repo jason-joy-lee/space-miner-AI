@@ -168,6 +168,15 @@ def train_model(session_id:str,request:TrainChoice):
     m=session_or_404(session_id)
     if m.ended or len(m.mined)>=5:raise HTTPException(409,"The mission has ended.")
     m.k=request.k;m.focus=request.focus;m.trained=True
+    m.training_runs+=1
+    comparison=model_diff(m)
+    if comparison and (
+        comparison["changed_count"] > 0
+        or comparison["before"]["k"] != comparison["after"]["k"]
+        or comparison["before"]["focus"] != comparison["after"]["focus"]
+        or comparison["before"]["training_count"] != comparison["after"]["training_count"]
+    ):
+        m.model_experiments+=1
     return snapshot(session_id,m,{"kind":"train","k":m.k,"focus":m.focus})
 
 @app.post("/api/missions/{session_id}/scan")
