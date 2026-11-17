@@ -15,7 +15,7 @@ function render(){
 if(!mission)return;
 $('research').textContent=mission.research_points||0;$('credits').textContent=mission.credits;$('mines').textContent=mission.mines_left;$('status').textContent=mission.trained?'ONLINE':'OFFLINE';$('status').style.color=mission.trained?'#60efbf':'#f8b392';
 $('known-count').textContent=mission.training.length+' / 14';
-$('known').innerHTML=mission.training.map(p=>'<div class="known-row"><b>'+e(p.id)+(p.new_scan?' ✦':'')+'</b><i class="'+(p.ore?'':'empty-label')+'">'+(p.ore?'◆ ORE':'◌ EMPTY')+'</i></div>').join('');
+$('known').innerHTML=mission.training.map(p=>'<div class="known-row"><b>'+e(p.id)+(p.new_scan?' ✦':'')+(p.provisional?' [DRAFT]':'')+'</b><i class="'+(p.ore?'':'empty-label')+'">'+(p.ore?'◆ ORE':'◌ EMPTY')+'</i></div>').join('');
 $('scan-target').innerHTML=mission.reserve.map(p=>'<option value="'+e(p.id)+'">'+e(p.id)+' · Heat '+p.heat+' · Spectrum '+p.spectrum+'</option>').join('')||'<option value="">All known</option>';
 $('scan').disabled=!mission.reserve.length||mission.finished||mission.credits<5;
 $('train').disabled=mission.finished;
@@ -41,10 +41,10 @@ const p=cur();if(!p){$('details').innerHTML='<div class="placeholder">✧<p>Sele
 let html='<div class="intel-orb">'+orb(p.id)+'</div><div class="intel-name">'+e(p.id)+'</div><div class="intel-row"><span>HEAT SENSOR</span><b>'+p.heat+' / 10</b></div><div class="intel-row"><span>SPECTRUM SENSOR</span><b>'+p.spectrum+' / 10</b></div>';
 if(p.mined){html+='<div class="intel-status">'+(p.ore?'◆ CONFIRMED ORE':'◌ CONFIRMED EMPTY')+'</div><p class="muted">This result stays visible. Mine another world to continue.</p>'}
 else if(!mission.trained){html+='<div class="intel-status">AI OFFLINE</div><p class="muted">Train AI to unlock its prediction for this planet.</p>'}
-else{const votes=p.ore_votes;html+='<div class="intel-status">'+(p.predicted?'◆ AI PREDICTS ORE':'◌ AI PREDICTS EMPTY')+'</div><div class="votes"><strong>'+votes+' / '+mission.k+' ORE VOTES</strong><div class="vote-bar">'+Array.from({length:mission.k},(_,i)=>'<i class="'+(i<votes?'yes':'')+'"></i>').join('')+'</div><p class="muted">'+votes+' of '+mission.k+' nearest known planets have ore. '+(p.predicted?'The majority predicts ORE.':'The majority predicts EMPTY.')+' This vote is not a calibrated probability.</p></div><div class="personal-guess"><strong>YOUR TURN: Guess before mining!</strong><p class="muted">Study the voters below. Correct personal prediction earns +20 Research XP (not credits).</p><div class="guess-buttons"><button id="guess-ore" class="outline '+(playerGuess==='ore'?'active':'')+'">💎 I SAY ORE</button><button id="guess-empty" class="outline '+(playerGuess==='empty'?'active':'')+'">◌ I SAY EMPTY</button></div></div><button id="mine" class="primary wide" '+(mission.finished||!playerGuess?'disabled':'')+'>⛏ MINE & REVEAL (−10)</button><button id="math" class="outline wide" style="margin-top:8px">⌘ SEE NEAREST NEIGHBORS</button>'}
+else{const votes=p.ore_votes;html+='<div class="intel-status">'+(p.predicted?'◆ AI PREDICTS ORE':'◌ AI PREDICTS EMPTY')+'</div><div class="votes"><strong>'+votes+' / '+mission.k+' ORE VOTES</strong><div class="vote-bar">'+Array.from({length:mission.k},(_,i)=>'<i class="'+(i<votes?'yes':'')+'"></i>').join('')+'</div><p class="muted">'+votes+' of '+mission.k+' nearest known planets have ore. '+(p.predicted?'The majority predicts ORE.':'The majority predicts EMPTY.')+' This vote is not a calibrated probability.</p></div><div class="personal-guess"><strong>YOUR TURN: Guess before mining!</strong><p class="muted">Study the voters below. Correct personal prediction earns +20 Research XP (not credits).</p><div class="guess-buttons"><button id="guess-ore" class="outline '+(playerGuess==='ore'?'active':'')+'">💎 I SAY ORE</button><button id="guess-empty" class="outline '+(playerGuess==='empty'?'active':'')+'">◌ I SAY EMPTY</button></div></div><button id="mine" class="primary wide" '+(mission.finished||!playerGuess?'disabled':'')+'>⛏ MINE & REVEAL (−10)</button><button id="math" class="outline wide" style="margin-top:8px">⌘ SEE NEAREST NEIGHBORS</button><button id="play-votes" class="outline wide" style="margin-top:8px">▶ REPLAY KNN VOTES</button>'}
 $('details').innerHTML=html;
 if($('guess-ore'))$('guess-ore').onclick=()=>{playerGuess='ore';renderDetails()};if($('guess-empty'))$('guess-empty').onclick=()=>{playerGuess='empty';renderDetails()};if($('mine'))$('mine').onclick=()=>minePlanet(p.id);
-if($('math'))$('math').onclick=math;
+if($('math'))$('math').onclick=math;if($('play-votes'))$('play-votes').onclick=()=>{if(inspection&&inspection.trained)showVoteAnimation(inspection);else toast('Loading voters: select planet again')};
 }
 function voterChart(p,near){
 const X=x=>20+x*20,Y=y=>195-y*17;
@@ -99,7 +99,7 @@ const tutorialScript=[
 ["Choose a target","Click a candidate planet in the star map. The right side will show its data and actual K nearest surveyed voters."],
 ["Reveal the voters","Use the interactive vote reveal: each surveyed planet votes its confirmed ORE or EMPTY label."],
 ["Gather evidence","Optional but recommended: annotate an unverified report and verify it with a paid scan. You can also continue after observing the voters."],
-["Make your prediction","Select I SAY ORE or I SAY EMPTY, then mine to reveal the truth."],
+["Make your prediction","After annotating or scanning, TRAIN AI again. Then select I SAY ORE or I SAY EMPTY and mine to reveal the truth."],
 ["Compare and improve","Save Model A, change K, sensor focus or annotated training data, and train Model B. Review the changed predictions."],
 ["Cadet graduation","You've explored the entire learning loop. Continue mining or replay the same galaxy to test a new idea."]
 ];
