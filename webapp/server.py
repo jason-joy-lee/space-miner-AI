@@ -30,6 +30,9 @@ class Mission:
     focus: str = "balanced"
     ended: bool = False
     research_points: int = 0
+    provisional_labels: dict[str, bool] = field(default_factory=dict)
+    label_audit: list[dict] = field(default_factory=list)
+    saved_model: dict | None = None
 
 # Local prototype only: ephemeral in-memory sessions. Do not publicly deploy
 # without authentication, persistence, rate limits and session protection.
@@ -45,6 +48,9 @@ class TrainChoice(BaseModel):
 class PlanetChoice(BaseModel):
     planet_id: str
 
+class LabelChoice(PlanetChoice):
+    label: Literal["ore", "empty"]
+
 class MineChoice(PlanetChoice):
     player_guess: Literal["ore", "empty"] | None = None
 
@@ -54,7 +60,38 @@ def session_or_404(session_id: str) -> Mission:
     return m
 
 def known(m:Mission)->list[Planet]:
-    return m.world["starter"]+[p for p in m.world["reserve"] if p.id in m.scanned]
+    """Never expose hidden reserve truth when a player supplies a provisional label."""
+    result=list(m.world["starter"])
+    for p in m.world["reserve"]:
+        if p.id in m.scanned:
+            result.append(p)
+        elif p.id in m.provisional_labels:
+            result.append(Planet(p.id,p.thermal,p.spectral,m.provisional_labels[p.id]))
+    return result
+
+
+def model_record(m:Mission)->dict:
+    """Capture a repeatable model snapshot, without candidate ground-truth."""
+    training=known(m)
+    return {
+        "k":m.k,"focus":m.focus,"training_count":len(training),
+        "validation_accuracy":round(accuracy(training,m.world["validation"],m.k,m.focus),4),
+        "predictions":{p.id:knn(training,p,m.k,m.focus)[0] for p in m.world["mining"]}
+    }
+
+
+def model_diff(m:Mission)->dict|None:
+    if not m.trained or m.saved_model is None:return None
+    before=m.saved_model
+    after=model_record(m)
+    changed=[{"id":p.id,"before":before["predictions"][p.id],"after":after["predictions"][p.id]}
+             for p in m.world["mining"] if before["predictions"][p.id]!=after["predictions"][p.id]]
+    return {
+        "before":{key:value for key,value in before.items() if key!="predictions"},
+        "after":{key:value for key,value in after.items() if key!="predictions"},
+        "changed":changed,"changed_count":len(changed),
+        "accuracy_delta":round(after["validation_accuracy"]-before["validation_accuracy"],4)
+    }
 
 def planet_info(p:Planet,ore_visible=False)->dict:
     d={"id":p.id,"heat":p.thermal,"spectrum":p.spectral}
@@ -83,8 +120,15 @@ def snapshot(session_id:str,m:Mission,event=None)->dict:
         "mines_left":5-len(m.mined),"scans_left":6-len(m.scanned),
         "k":m.k,"focus":m.focus,"trained":m.trained,"finished":finished,
         "research_points":m.research_points,
-        "training":[planet_info(p,True)|{"new_scan":p.id in m.scanned} for p in training],
-        "reserve":[planet_info(p) for p in m.world["reserve"] if p.id not in m.scanned],
+        "label_audit":list(m.label_audit),
+        "saved_model":({key:value for key,value in m.saved_model.items() if key!="predictions"} if m.saved_model else None),
+        "model_comparison":model_diff(m),
+        "training":[planet_info(p,True)|{"new_scan":p.id in m.scanned,
+                           "verified":(p.id not in m.provisional_labels or p.id in m.scanned),
+                           "provisional":p.id in m.provisional_labels and p.id not in m.scanned} for p in training],
+        "reserve":[planet_info(p)|{"provisional_label":("ore" if m.provisional_labels[p.id] else "empty")
+                    if p.id in m.provisional_labels else None}
+                    for p in m.world["reserve"] if p.id not in m.scanned],
         "candidates":candidates,
         "evaluation":({"accuracy":round(accuracy(training,m.world["validation"],m.k,m.focus),4),
                        "baseline":round(baseline(training,m.world["validation"]),4),
@@ -126,8 +170,17 @@ def scan_planet(session_id:str,request:PlanetChoice):
     found=next((p for p in m.world["reserve"] if p.id==request.planet_id),None)
     if found is None or found.id in m.scanned:raise HTTPException(400,"Choose a currently unscanned training planet.")
     if m.credits<5:raise HTTPException(400,"Not enough credits to scan.")
-    m.credits-=5;m.scanned.append(found.id);m.trained=False
-    return snapshot(session_id,m,{"kind":"scan","planet":planet_info(found,True),"delta":-5})
+    m.credits-=5
+    previous=m.provisional_labels.pop(found.id,None)
+    m.scanned.append(found.id)
+    m.trained=False
+    label_correct=None if previous is None else previous==found.ore
+    if previous is not None:
+        m.label_audit.append({"planet_id":found.id,"player_label":"ore" if previous else "empty",
+                              "verified_label":"ore" if found.ore else "empty","correct":label_correct})
+        if label_correct:m.research_points+=10
+    return snapshot(session_id,m,{"kind":"scan","planet":planet_info(found,True),"delta":-5,
+                                  "label_verified":previous is not None,"label_correct":label_correct})
 
 @app.get("/api/missions/{session_id}/inspect/{planet_id}")
 def inspect_planet(session_id:str,planet_id:str):
