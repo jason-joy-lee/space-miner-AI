@@ -46,7 +46,19 @@ def galaxy(seed=42):
     }
 
 
-def knn(training, candidate, k):
+SENSOR_WEIGHTS = {"balanced": (1.0, 1.0), "heat": (2.0, 0.5), "spectrum": (0.5, 2.0)}
+
+
+def feature_distance(a, b, focus="balanced"):
+    """Weighted Euclidean distance in synthetic sensor space."""
+    if focus not in SENSOR_WEIGHTS:
+        raise ValueError("Unknown sensor focus")
+    heat_weight, spectrum_weight = SENSOR_WEIGHTS[focus]
+    return dist((heat_weight * a.thermal, spectrum_weight * a.spectral),
+                (heat_weight * b.thermal, spectrum_weight * b.spectral))
+
+
+def knn(training, candidate, k, focus="balanced"):
     """Return predicted label, K nearest training examples and ore votes.
 
     Only sensor features from the candidate are read. Its true ore label is
@@ -56,17 +68,16 @@ def knn(training, candidate, k):
         raise ValueError("K must be odd and fit training data")
     closest = sorted(
         training,
-        key=lambda p: (dist((p.thermal, p.spectral),
-                            (candidate.thermal, candidate.spectral)), p.id)
+        key=lambda p: (feature_distance(p, candidate, focus), p.id)
     )[:k]
     votes = sum(p.ore for p in closest)
     return votes > k // 2, closest, votes
 
 
-def accuracy(training, validation, k):
+def accuracy(training, validation, k, focus="balanced"):
     if not validation:
         raise ValueError("Validation must not be empty")
-    return sum(knn(training, p, k)[0] == p.ore for p in validation) / len(validation)
+    return sum(knn(training, p, k, focus)[0] == p.ore for p in validation) / len(validation)
 
 
 def baseline(training, validation):
