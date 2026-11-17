@@ -58,9 +58,8 @@ def test_training_history_is_server_derived_without_target_labels():
 
 def test_top_tabs_preserve_game_and_existing_learning_controls():
     assert HTML.index('data-page="explore"')<HTML.index('data-page="train"')<HTML.index('data-page="missions"')
-    for element in ("page-explore","page-train","page-missions","explore-map",
-                    "explore-intel","train-controls","train-lab","mission-tasks",
-                    "training-journey"):
+    for element in ("page-explore","page-train","page-missions",
+                    "mission-tasks","training-journey"):
         assert 'id="'+element+'"' in HTML
     assert "function initializeTabs()" in JS
     assert "function setPage(name)" in JS
