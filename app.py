@@ -1,9 +1,33 @@
+"""Space Miner AI — mission-first playable Streamlit interface."""
 import streamlit as st
 import plotly.graph_objects as go
 from space_miner.core import galaxy, knn, accuracy, baseline, mine
+from space_miner.strategy import ranked_candidates, explanation
 
-st.set_page_config(page_title="Space Miner AI", page_icon="🪐",layout="wide")
-st.markdown("""<style>.stApp{background:radial-gradient(ellipse at 15% 0%,#192b53,#080e20 70%);color:#e9f2ff}h1,h2,h3{color:#e6f4ff!important}[data-testid="stMetricValue"]{color:#62edba}</style>""",unsafe_allow_html=True)
+st.set_page_config(page_title="Space Miner AI", page_icon="🪐", layout="wide")
+st.markdown("""
+<style>
+.stApp {background:radial-gradient(ellipse at 25% 0%,#20396a 0%,#0b1330 48%,#070d1b 100%);color:#e8f4ff}
+h1,h2,h3 {color:#f1f7ff!important}
+div[data-testid="stVerticalBlockBorderWrapper"] {border-color:#394a76}
+[data-testid="stMetricValue"] {color:#75eed0}
+div.stButton>button {border-radius:11px;border-color:#455d89;background:#1b3156;color:#e6f7ff;font-weight:650}
+div.stButton>button:hover {border-color:#60d8ff;color:#fff;background:#294674}
+div.stButton>button[kind="primary"] {background:linear-gradient(110deg,#007eb8,#6653d1);border:0;color:white}
+.planet-card{padding:10px 13px;border:1px solid #384e7e;border-radius:14px;background:linear-gradient(145deg,#182a4e,#111d39);min-height:115px}
+.planet-orb{font-size:34px;line-height:1.2}
+.planet-card .code{font-size:13px;letter-spacing:1px;color:#bcdafa;font-weight:750}
+.planet-card .feature{font-size:11px;color:#9eb6d5;margin-top:5px}
+.mission-banner{padding:20px;border-radius:16px;background:linear-gradient(110deg,#173a61,#251c51);border:1px solid #4a608b}
+.mission-banner .eyebrow{font-size:11px;color:#88dbf7;letter-spacing:2px;font-weight:750}
+.mission-banner h2{margin:7px 0!important;font-size:25px}
+.mission-banner .sub{color:#d4deff;font-size:13px}
+.flash-good{padding:17px;background:#103d39;border:1px solid #4ce7b7;border-radius:14px}
+.flash-bad{padding:17px;background:#49302e;border:1px solid #f6ad79;border-radius:14px}
+.help-text{font-size:12px;color:#b3c7eb}
+</style>
+""", unsafe_allow_html=True)
+
 
 def reset(seed=42):
     s=st.session_state
@@ -17,142 +41,217 @@ def reset(seed=42):
     s.started=False
     s.finished=False
     s.trained=False
-    s.just_mined=False
+    s.selected_id=None
+    s.reveal_id=None
+    s.tutorial=True
 
-if "world" not in st.session_state: reset()
+
+if "world" not in st.session_state:
+    reset()
+
 s=st.session_state
 g=s.world
-training=g["starter"]+[p for p in g["reserve"] if p.id in s.scanned]
+training=g["starter"] + [p for p in g["reserve"] if p.id in s.scanned]
+remaining=[p for p in g["mining"] if p.id not in s.mined]
+ranking=ranked_candidates(training,remaining,s.k)
+by_id={p.id:p for p in g["mining"]}
+if s.selected_id not in {p.id for p in remaining}:
+    s.selected_id=ranking[0][0].id if ranking else None
+selected=by_id.get(s.selected_id)
+
 st.title("✦ SPACE MINER AI")
-st.caption("MISSION 01 — THE HIDDEN ORE GALAXY  ·  Real KNN  ·  Synthetic worlds")
+st.caption("MISSION 01  /  THE HIDDEN ORE GALAXY  ·  A real KNN strategy game")
 with st.sidebar:
     st.header("COMMAND DECK")
-    st.metric("Credits",s.credits)
-    st.metric("Mining actions",f"{len(s.mined)}/5")
-    st.metric("Known training planets",len(training))
+    st.metric("Credits",s.credits,delta=s.history[-1]["delta"] if s.history else None)
+    st.metric("Mining attempts",f"{len(s.mined)} / 5")
+    st.metric("Known examples",len(training))
     st.progress(len(s.mined)/5)
-    st.caption(f"Galaxy seed {s.seed}")
-    if st.button("↺ Replay same galaxy"):
+    st.caption(f"Galaxy seed: {s.seed}")
+    if st.button("↺ Replay same galaxy",use_container_width=True):
         reset(s.seed)
         st.rerun()
-    new_seed=st.number_input("New galaxy seed",value=int(s.seed+1),step=1)
-    if st.button("Explore a new galaxy"):
-        reset(int(new_seed))
+    seed=st.number_input("Next galaxy seed",value=int(s.seed+1),step=1)
+    if st.button("Explore new galaxy",use_container_width=True):
+        reset(int(seed))
         st.rerun()
 
 if not s.started:
-    st.subheader("Can your AI find valuable planets?")
-    st.write("**Goal:** Pick five planets and earn as many credits as you can. Finding ore gives you **+15 net credits**; mining an empty planet loses **10 credits**.")
-    st.info("**How to play:** ① Look at known examples → ② Train your AI → ③ Choose a planet predicted to contain ore → ④ Mine and see whether it was right → ⑤ Try another strategy.")
-    st.write("**The mystery:** Every planet has two fictional sensor readings: Thermal (X) and Spectral (Y), each between 0 and 10. Planets with similar readings often have similar minerals, but not always. The chart is a **map of sensor measurements**, not a map of planet locations.")
+    st.markdown("""
+<div class="mission-banner">
+ <div class="eyebrow">INCOMING TRANSMISSION · COMMANDER MOSES</div>
+ <h2>Find the hidden ore. Outsmart the galaxy.</h2>
+ <div class="sub">Your AI knows eight surveyed planets. You have five mining attempts to find as much ore as possible. Can you finish with more credits than you started?</div>
+</div>""",unsafe_allow_html=True)
     a,b,c=st.columns(3)
-    a.metric("STARTING CREDITS",100)
-    b.metric("MINING COST",10)
-    c.metric("SUCCESSFUL RETURN",25)
-    if st.button("🚀 START MISSION",type="primary"):
+    a.metric("Starting credits","100")
+    b.metric("Each mine","−10")
+    c.metric("Ore reward","+25")
+    st.info("**Your plan:** ① Train your AI → ② Choose a blue planet → ③ Inspect its neighbors → ④ Mine to reveal the truth → ⑤ Improve your strategy.")
+    st.caption("The sensors are fictional: Thermal and Spectral scores (0–10). They describe planet properties, **not actual positions in space**. Similar sensor readings often suggest similar mineral content.")
+    if st.button("🚀 START EXPEDITION",type="primary",use_container_width=True):
         s.started=True
         st.rerun()
     st.stop()
 
-left,right=st.columns([1.5,1],gap="large")
-with left:
-    st.subheader("01 · Unknown Galaxy")
-    fig=go.Figure()
-    for ore,color,name in [(True,"#34e1b2","Known ore"),(False,"#ffbd60","Known empty")]:
-        pts=[p for p in training if p.ore==ore]
-        fig.add_trace(go.Scatter(x=[p.thermal for p in pts],y=[p.spectral for p in pts],mode="markers",
-          marker=dict(size=14,color=color,symbol="diamond"),name=name,text=[p.id for p in pts],
-          hovertemplate="%{text}<br>T %{x}<br>S %{y}<extra></extra>"))
-    remaining=[p for p in g["mining"] if p.id not in s.mined]
-    predicted=[knn(training,p,s.k)[0] for p in remaining]
-    fig.add_trace(go.Scatter(x=[p.thermal for p in remaining],y=[p.spectral for p in remaining],
-      mode="markers+text",text=[p.id for p in remaining],textposition="top center",
-      marker=dict(size=16,color=(["#30b9f1" if x else "#9c78ef" for x in predicted] if s.trained else ["#9ca3af"]*len(remaining)),line=dict(width=1,color="white")),
-      name="Unexplored",hovertemplate="%{text}<br>T %{x}<br>S %{y}<extra></extra>"))
-    fig.update_layout(height=430,margin=dict(l=12,r=12,t=12,b=12),paper_bgcolor="#101a33",plot_bgcolor="#101a33",
-      font=dict(color="#d3e1fc"),xaxis=dict(title="Thermal signature",range=[-.5,10.5],gridcolor="#263954"),
-      yaxis=dict(title="Spectral index",range=[-.5,10.5],gridcolor="#263954"))
-    st.plotly_chart(fig,use_container_width=True)
-    st.info("**Read this chart:** 🟢 green diamonds = known ORE; 🟠 orange diamonds = known EMPTY. Circles = planets you may mine. Once trained, 🔵 blue circles mean AI predicts ORE; 🟣 purple circles mean AI predicts EMPTY. Gray circles have not been predicted yet.")
-    with st.expander("What do the two axes actually mean?", expanded=False):
-        st.write("**X — Thermal signature:** imaginary heat-sensor reading, 0–10. **Y — Spectral index:** imaginary light-sensor reading, 0–10. Neither is a real scientific unit. Each dot is one planet placed according to its two sensor numbers. Nearby dots have similar measurements — they are **not physically nearby in space**. KNN finds dots with similar measurements.")
-with right:
-    st.subheader("02 · Train Your AI")
-    previous_k=s.k
-    s.k=st.select_slider("K: How many examples should AI consult?",options=[1,3,5,7],value=s.k)
-    if s.k!=previous_k: s.trained=False
-    st.caption("**K=1:** trust the single closest known planet (sensitive to noise). **K=3 or 5:** let several similar examples vote (often steadier). **K=7:** smooth more, but can overlook small mineral regions. No K is always best.")
+st.markdown('<div class="mission-banner"><div class="eyebrow">ACTIVE MISSION · SECTOR 01</div><h2>THE HIDDEN ORE GALAXY</h2><div class="sub">Find valuable ore with limited mining attempts. Your AI sees sensor signals, not hidden mineral deposits.</div></div>',unsafe_allow_html=True)
+st.write("")
+a,b,c=st.columns(3)
+a.metric("Credits remaining",s.credits)
+b.metric("Mines left",5-len(s.mined))
+c.metric("Known training planets",len(training))
+
+if s.reveal_id:
+    last=s.history[-1]
+    if last["ore"]:
+        st.markdown(f'<div class="flash-good"><strong>💎 ORE DISCOVERED — {last["id"]}!</strong><br>Mining cost −10, reward +25 → <strong>+15 net credits</strong>. Your AI predicted {"ORE" if last["prediction"] else "EMPTY"}.</div>',unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="flash-bad"><strong>🌑 EMPTY PLANET — {last["id"]}</strong><br>No reward; you spent <strong>10 credits</strong>. Your AI predicted {"ORE" if last["prediction"] else "EMPTY"}.</div>',unsafe_allow_html=True)
+    if last["prediction"] != last["ore"]:
+        st.caption("The AI was wrong! Similar sensor readings do not always imply identical ore labels. More training samples or a different K may help — but neither guarantees success.")
+    if st.button("Continue exploring →",type="primary"):
+        s.reveal_id=None
+        st.rerun()
+
+if s.tutorial:
+    with st.container(border=True):
+        st.markdown("#### 👋 First mission? Here's the trick.")
+        st.write("The **small known sample** is what your AI learns from. **Blue planets** are predicted to have ore; **purple planets** are predicted empty. Your job is to decide which to risk a mining attempt on.")
+        st.write("**K** means how many similar known examples vote on each prediction. Try K=3 first. You can change it later and compare how the predictions change.")
+        if st.button("Got it — hide tips"):
+            s.tutorial=False
+            st.rerun()
+
+st.subheader("1 · Train your AI")
+controls, scanbox=st.columns([1.1,1],gap="large")
+with controls:
+    s.k=st.select_slider("How many neighbors should vote? (K)",options=[1,3,5,7],value=s.k)
     score=accuracy(training,g["validation"],s.k)
-    a,b=st.columns(2)
-    a.metric("Actual KNN accuracy",f"{score:.0%}")
-    b.metric("Majority baseline",f"{baseline(training,g['validation']):.0%}")
-    st.caption("**Accuracy** = correct answers on 20 hidden practice-test examples. **Baseline** = score from always guessing the most common training class. Higher is generally better, but neither guarantees success on a particular planet.")
-    if st.button("⚡ TRAIN AI & REVEAL PREDICTIONS",type="primary"):
+    base=baseline(training,g["validation"])
+    x,y=st.columns(2)
+    x.metric("KNN validation accuracy",f"{score:.0%}")
+    y.metric("Simple baseline",f"{base:.0%}")
+    st.caption("Tested on 20 separate examples. Accuracy is calculated by KNN, **not invented**. Validation planets are not mineable targets.")
+    if st.button("⚡ TRAIN AI / REFRESH PREDICTIONS",type="primary",use_container_width=True):
         s.trained=True
         st.rerun()
     if s.trained:
-        st.success(f"AI ready: {round(score*20)} / 20 validation examples correct. Blue circles are AI-predicted ore targets. Try K=1, 3, 5, 7 and re-train to compare accuracy.")
+        st.success("AI ONLINE. Your predictions appear in the planet cards below.")
     else:
-        st.warning("**Next action:** click TRAIN AI to reveal which unknown planets are predicted to contain ore.")
-    st.divider()
-    st.subheader("03 · Collect More Evidence")
+        st.warning("Train your AI to reveal which planets it thinks contain ore.")
+with scanbox:
+    st.markdown("**Improve your training examples**")
+    st.caption("A scan costs 5 credits and reveals an additional *training-sector* planet, not a mining target. It might help accuracy, but not always.")
     extra=[p for p in g["reserve"] if p.id not in s.scanned]
     if extra:
-        scan=st.selectbox("Training-sector planet",extra,format_func=lambda p:f"{p.id} · Thermal {p.thermal} · Spectral {p.spectral}")
-        st.caption("Scanning reveals the truth about a different training planet (not a mineable target). It gives AI one more example. Extra examples can help, but do not guarantee better accuracy.")
-        if st.button("🔎 Scan planet (−5 credits)",disabled=s.credits<5):
-            s.trained=False
-            s.scanned.append(scan.id)
+        survey=st.selectbox("Scan a new training planet",extra,format_func=lambda p:f"{p.id} · Heat {p.thermal} · Spectrum {p.spectral}")
+        if st.button("🔎 SCAN FOR 5 CREDITS",disabled=s.credits<5 or s.finished):
+            s.scanned.append(survey.id)
             s.credits-=5
+            s.trained=False
             st.rerun()
-    else: st.info("All available training planets have been scanned.")
+    else:
+        st.info("All six optional training samples have been collected.")
+    with st.expander("How should I choose K?"):
+        st.write("**K=1:** nearest single example, easily fooled by noisy data. **K=3 or 5:** more examples vote; often steadier. **K=7:** broad voting can miss smaller ore clusters. There is no universally best K.")
+        st.write("Look at validation accuracy to compare settings. That score estimates performance on new examples, but does not guarantee any single mine.")
 
 st.divider()
-st.subheader("04 · Choose Your Next Mine")
+st.subheader("2 · Choose a planet")
+st.caption("Select a planet card below. The colored prediction is based on real KNN results; ore is not revealed until you mine.")
 if not s.trained:
-    st.info("**Step 1:** Train your AI above. After training, this section will rank the planets it predicts contain ore.")
-unmined=[p for p in g["mining"] if p.id not in s.mined]
-if unmined and len(s.mined)<5 and s.credits>=10 and not s.finished and s.trained:
-    predictions=[(p, *knn(training,p,s.k)[::2]) for p in unmined]
-    ranking=sorted(predictions,key=lambda item:(not item[1],-item[2]/s.k,item[0].id))
-    st.write("**Try this:** A blue planet with many ore votes is a reasonable candidate to investigate. The vote fraction is NOT a calibrated probability — even a unanimous vote can be wrong.")
-    st.dataframe([{"Planet":p.id,"AI says":"ORE ✓" if pred else "EMPTY","Ore votes":f"{votes}/{s.k}","Sensors":f"T={p.thermal}, S={p.spectral}"} for p,pred,votes in ranking],hide_index=True,use_container_width=True)
-    chosen=st.selectbox("Select a planet to mine (ranked by predicted ore votes)",[r[0] for r in ranking],format_func=lambda p:f"{p.id} · Thermal {p.thermal} · Spectral {p.spectral}")
-    prediction,near,votes=knn(training,chosen,s.k)
-    a,b,c=st.columns(3)
-    a.metric("AI prediction","ORE" if prediction else "EMPTY")
-    b.metric("Neighbor votes",f"{votes} / {s.k}")
-    c.metric("Cost to mine","10")
-    with st.expander("🔬 BUILDER MODE — How does this prediction work?"):
-        st.write("KNN measures distance to the training planets and votes among the K nearest. It does not know the true answer.")
-        st.dataframe([{"Neighbor":p.id,"Ore":p.ore,"Distance":round(((p.thermal-chosen.thermal)**2+(p.spectral-chosen.spectral)**2)**.5,3)} for p in near],hide_index=True)
-        st.code("distance = ((x1 - x2)**2 + (y1 - y2)**2)**0.5",language="python")
-    st.caption("Cost: −10 credits. If ore is found: +25 reward (net +15). Otherwise: net −10. You have five mining attempts.")
-    if st.button("⛏ MINE THIS PLANET",type="primary"):
-        old=s.credits
-        s.credits,s.mined=mine(s.credits,s.mined,chosen)
-        s.history.append(dict(id=chosen.id,prediction=prediction,ore=chosen.ore,delta=s.credits-old))
-        st.rerun()
-elif s.trained:
-    st.info("Mining is complete. Review your expedition below.")
+    st.info("Next step → Click **TRAIN AI** above. Planet cards are intentionally unexplored until then.")
+else:
+    st.markdown("**AI suggestion:** Start by inspecting a blue planet with several ore votes. Vote fractions are not calibrated probabilities.")
+    if ranking:
+        best=ranking[0]
+        st.caption(f"Top current AI recommendation: **{best[0].id}** · predicted {'ORE' if best[1] else 'EMPTY'} · {best[2]}/{s.k} ore votes.")
+
+orbs=["🪐","🌑","🌎","🔴","🌕","🟠","🔵","🪐","🌗","🟣","🛰️","🌖"]
+for offset in range(0,len(ranking),4):
+    cols=st.columns(4)
+    for j,row in enumerate(ranking[offset:offset+4]):
+        planet,pred,votes,_=row
+        original=int(planet.id.split("-")[-1])-1
+        color=("#55d6ff" if pred else "#b39cff") if s.trained else "#b6bfd8"
+        label=("ORE SIGNAL" if pred else "EMPTY SIGNAL") if s.trained else "UNEXPLORED"
+        with cols[j]:
+            st.markdown(f"""<div class="planet-card">
+            <div class="planet-orb">{orbs[original%len(orbs)]}</div>
+            <div class="code">{planet.id}</div>
+            <div style="font-size:11px;color:{color};font-weight:750">{label}</div>
+            <div class="feature">Heat {planet.thermal} · Spectrum {planet.spectral}</div>
+            {f'<div class="feature">Ore votes: {votes}/{s.k}</div>' if s.trained else ''}
+            </div>""",unsafe_allow_html=True)
+            selected_label="✓ SELECTED" if s.selected_id==planet.id else "Inspect planet"
+            if st.button(selected_label,key=f"select-{planet.id}",use_container_width=True):
+                s.selected_id=planet.id
+                st.rerun()
+
+if selected and s.trained and not s.finished and len(s.mined)<5 and s.credits>=10:
+    st.divider()
+    st.subheader(f"3 · Planet {selected.id} — Mining Decision")
+    decision,detail=st.columns([1.0,1.15],gap="large")
+    result,neighbors,votes=knn(training,selected,s.k)
+    with decision:
+        st.metric("AI prediction","💎 ORE" if result else "🌑 EMPTY")
+        st.metric("Known ore votes",f"{votes} / {s.k}")
+        st.write(explanation(result,votes,s.k))
+        st.caption("Mining: −10 credits. Found ore: +25 reward (net +15). No ore: −10 net.")
+        if st.button("⛏ MINE THIS PLANET",type="primary",use_container_width=True):
+            previous=s.credits
+            s.credits,s.mined=mine(s.credits,s.mined,selected)
+            s.history.append({"id":selected.id,"prediction":result,"ore":selected.ore,"delta":s.credits-previous})
+            s.reveal_id=selected.id
+            s.selected_id=None
+            st.rerun()
+    with detail:
+        st.markdown("**Why did the AI choose that?**")
+        st.write("These are its nearest surveyed examples. Each example gets one vote.")
+        rows=[{"Example":p.id,"Known result":"💎 ORE" if p.ore else "EMPTY",
+               "Distance":round(((p.thermal-selected.thermal)**2+(p.spectral-selected.spectral)**2)**.5,2)}
+              for p in neighbors]
+        st.dataframe(rows,hide_index=True,use_container_width=True)
+        st.caption("Smaller distances mean more similar **sensor measurements**, not physically closer stars.")
+        with st.expander("🔬 BUILDER MODE · Show the math and feature map"):
+            fig=go.Figure()
+            for label,color,name in [(True,"#4ae4b1","Known ore"),(False,"#ffb85b","Known empty")]:
+                pts=[p for p in training if p.ore==label]
+                fig.add_trace(go.Scatter(x=[p.thermal for p in pts],y=[p.spectral for p in pts],mode="markers",name=name,
+                    marker=dict(size=12,color=color),text=[p.id for p in pts],
+                    hovertemplate="%{text}<br>Heat %{x}<br>Spectrum %{y}<extra></extra>"))
+            for p in neighbors:
+                fig.add_trace(go.Scatter(x=[selected.thermal,p.thermal],y=[selected.spectral,p.spectral],
+                    mode="lines",line=dict(color="#91c4ff",width=2,dash="dash"),showlegend=False,hoverinfo="skip"))
+            fig.add_trace(go.Scatter(x=[selected.thermal],y=[selected.spectral],mode="markers",name="Selected",
+                marker=dict(symbol="star",size=18,color="#ffffff")))
+            fig.update_layout(height=360,margin=dict(l=8,r=8,t=8,b=8),paper_bgcolor="#151f3b",
+                plot_bgcolor="#151f3b",font=dict(color="#cce4ff"),
+                xaxis=dict(title="Thermal sensor value (0–10)",range=[0,10],gridcolor="#34415c"),
+                yaxis=dict(title="Spectral sensor value (0–10)",range=[0,10],gridcolor="#34415c"))
+            st.plotly_chart(fig,use_container_width=True)
+            st.code("distance = ((heat_1 - heat_2)**2 + (spectrum_1 - spectrum_2)**2)**0.5",language="python")
+            st.caption("This chart is a 2D **feature space**, not a geographic star map.")
 
 if s.history:
-    last=s.history[-1]
-    if last["ore"]: st.success(f"✨ {last['id']} contained ore! +15 net credits.")
-    else: st.warning(f"◌ {last['id']} was empty. −10 credits.")
-    if last["prediction"]!=last["ore"]:
-        st.info("**Why was AI wrong?** KNN copies the majority label of similar training planets, but nearby measurements do not always mean the same mineral status. Try another K or scan extra examples before your next mine.")
-    else:
-        st.info("**Why did AI get it right?** The nearby examples voted for the correct class. This is one result, not proof that AI will be right every time.")
-    st.dataframe([{"Planet":h["id"],"AI predicted":"Ore" if h["prediction"] else "Empty","Actual":"Ore" if h["ore"] else "Empty","Credit change":h["delta"]} for h in s.history],hide_index=True,use_container_width=True)
-if len(s.mined)==5 or s.credits<10 or s.finished:
-    st.subheader("🏆 Expedition Report")
-    medal="🥇 GOLD" if s.credits>=150 else "🥈 SILVER" if s.credits>=125 else "🥉 BRONZE" if s.credits>=100 else "Mission Complete"
-    st.metric("Final credits",s.credits)
-    st.write(f"**{medal}** · Successful mines {sum(h['ore'] for h in s.history)} / {len(s.history)}")
-    st.caption("A higher classification accuracy does not always guarantee higher mining profit.")
-elif st.button("End expedition now"):
+    st.divider()
+    st.subheader("Expedition log")
+    st.dataframe([{"Planet":h["id"],"Predicted":"Ore" if h["prediction"] else "Empty",
+                   "Actual":"Ore" if h["ore"] else "Empty","Credit change":h["delta"]}
+                  for h in s.history],hide_index=True,use_container_width=True)
+
+finished=s.finished or len(s.mined)==5 or s.credits<10
+if finished:
+    st.divider()
+    st.subheader("🏆 EXPEDITION COMPLETE")
+    medal="GOLD" if s.credits>=150 else "SILVER" if s.credits>=125 else "BRONZE" if s.credits>=100 else "EXPLORER"
+    a,b,c=st.columns(3)
+    a.metric("Final credits",s.credits)
+    b.metric("Ore discoveries",sum(h["ore"] for h in s.history))
+    c.metric("Medal",medal)
+    st.info("Try the same galaxy with a different K or more training examples. Compare results — don't assume your last strategy will always win.")
+elif st.button("End expedition and review score"):
     s.finished=True
     st.rerun()
 
-st.caption("Educational fiction. The KNN predictions and accuracy are real calculations, not demo percentages.")
+st.caption("All planets and sensor readings are synthetic. KNN prediction, voting and held-out evaluation use real calculations. No external LLM is involved.")
