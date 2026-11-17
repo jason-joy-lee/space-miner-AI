@@ -103,8 +103,9 @@ const tutorialScript=[
 ["Compare and improve","Save Model A, change K, sensor focus or annotated training data, and train Model B. Review the changed predictions."],
 ["Cadet graduation","You've explored the entire learning loop. Continue mining or replay the same galaxy to test a new idea."]
 ];
-function startTutorial(){if(!mission){toast('Launch expedition before starting tutorial');return}tutorialStep=0;renderTutorial()}
+function startTutorial(){if(!mission){toast('Launch expedition before starting tutorial');return}tutorialStep=1;renderTutorial()}
 function advanceTutorial(step){if(tutorialStep<0)return;tutorialStep=Math.max(tutorialStep,step);renderTutorial()}
+function skipTutorialStep(){if(tutorialStep>=0&&tutorialStep<7)advanceTutorial(tutorialStep+1)}
 function renderTutorial(){
 const panel=$('tutorial-panel');if(tutorialStep<0||!mission){panel.hidden=true;return}
 panel.hidden=false;
@@ -172,7 +173,7 @@ if(voterStep>list.length)hide('voting');
 
 $('launch').onclick=()=>{if(mission){hide('intro');return}create(12)};$('train').onclick=train;$('scan').onclick=scan;
 $('koptions').onclick=ev=>{const b=ev.target.closest('[data-k]');if(!b)return;k=Number(b.dataset.k);render();if(mission?.trained&&k!==mission.k)toast('K CHANGED · CLICK TRAIN TO UPDATE PREDICTIONS')};
-$('focus-options').onclick=ev=>{const b=ev.target.closest('[data-focus]');if(!b)return;focus=b.dataset.focus;render();if(mission?.trained&&focus!==mission.focus)toast('SENSOR FOCUS CHANGED · TRAIN TO APPLY')};$('tutorial-start').onclick=startTutorial;$('tutorial-skip').onclick=()=>{tutorialStep=-1;renderTutorial()};$('save-model').onclick=saveModel;$('label-ore').onclick=()=>labelReport('ore');$('label-empty').onclick=()=>labelReport('empty');$('vote-next').onclick=nextVoter;$('vote-close').onclick=()=>{hide('voting');if(tutorialStep===3)advanceTutorial(4)};
+$('focus-options').onclick=ev=>{const b=ev.target.closest('[data-focus]');if(!b)return;focus=b.dataset.focus;render();if(mission?.trained&&focus!==mission.focus)toast('SENSOR FOCUS CHANGED · TRAIN TO APPLY')};$('tutorial-start').onclick=startTutorial;$('tutorial-skip').onclick=()=>{tutorialStep=-1;renderTutorial()};$('tutorial-next').onclick=skipTutorialStep;$('save-model').onclick=saveModel;$('label-ore').onclick=()=>labelReport('ore');$('label-empty').onclick=()=>labelReport('empty');$('vote-next').onclick=nextVoter;$('vote-close').onclick=()=>{hide('voting');if(tutorialStep===3)advanceTutorial(4)};
 $('builder').onclick=math;$('close-learn').onclick=()=>hide('learn');
 $('help').onclick=()=>{$('launch').textContent='RETURN TO GAME';show('intro')};
 $('restart').onclick=()=>create(sessionSeed);$('retry').onclick=()=>create(sessionSeed);$('next').onclick=()=>create(sessionSeed+1);
