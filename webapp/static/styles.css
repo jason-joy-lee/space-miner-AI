@@ -76,3 +76,47 @@
 .debrief ol{padding-left:20px;color:#cee7f5}
 .debrief-neighbors{font-size:10px;color:#9ebbd4}
 @media(max-width:760px){.challenge-grid{grid-template-columns:1fr}}
+
+
+/* V0.5: deliberate information hierarchy and dismissible tutorial. */
+.layout{grid-template-columns:265px minmax(400px,1fr) 345px}
+.tutorial-panel{position:relative;padding:20px 48px 20px 22px;border:2px solid #6cdef5;background:linear-gradient(115deg,#164873,#2a2866);box-shadow:0 0 32px #2daed246}
+.tutorial-panel h3{font-size:19px;color:#edfcff}
+.tutorial-panel .tutorial-close{position:absolute;top:8px;right:9px;width:32px;height:32px;border-radius:50%;border:1px solid #a6dbfa;background:#1a3458;color:white;font-weight:800;cursor:pointer}
+.tutorial-panel .tutorial-close:hover{background:#325e8c}
+.target-brief{display:flex;align-items:center;gap:12px;padding:8px 0}
+.target-orb .orb{width:66px;height:66px;margin:0}
+.target-name{font-size:27px;font-weight:900;letter-spacing:1px}
+.target-type{font-size:10px;letter-spacing:.8px;color:#afc1db;margin-top:4px}
+.target-sensors{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0 14px}
+.target-sensors>div{background:#132f50;border:1px solid #36587f;border-radius:10px;padding:11px}
+.target-sensors small{display:block;color:#94c6e2}
+.target-sensors strong{display:block;font-size:26px;color:#f1faff;margin-top:4px}
+.intel .voter-evidence{margin:6px 0 14px;padding:13px;border-color:#3a95bd;background:linear-gradient(125deg,#182e4f,#142642)}
+.evidence-title{display:flex;justify-content:space-between;align-items:start;gap:8px}
+.evidence-title h3{font-size:15px;margin-bottom:2px;color:#9ce8ff}
+.evidence-title p{margin:0 0 10px}
+.evidence-replay{border:1px solid #5d81a2;background:#254664;color:#e7faff;border-radius:50%;width:33px;height:33px;font-size:19px;flex:none}
+.evidence-columns,.evidence-row{display:grid;grid-template-columns:1.35fr .68fr .68fr .65fr .92fr;gap:4px;align-items:center}
+.evidence-columns{font-size:9px;font-weight:800;color:#9bbfe0;padding:7px 4px;border-bottom:1px solid #4b6c8d}
+.evidence-row{padding:9px 4px;font-size:11px;border-bottom:1px solid #38536e}
+.evidence-row b{font-size:11px;color:#f6fbff;min-width:0}
+.evidence-row span{color:#ccdef4}
+.evidence-row strong{text-align:right;font-size:10px}
+.evidence-row.has-ore strong{color:#61efb5}
+.evidence-row.no-ore strong{color:#f2b38d}
+.draft-tag{display:block;color:#fbd089;font-size:8px;letter-spacing:0;margin-top:2px}
+.evidence-tally{border:1px solid #4e7fa7;background:#183956;padding:12px 10px;border-radius:9px;margin:12px 0 9px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.evidence-tally strong{font-size:12px!important;margin:0!important}
+.evidence-tally span{font-size:11px;color:#aee6ff;white-space:nowrap}
+.evidence-expand{border-top:1px solid #315477;padding:8px 0;color:#d6e9fc;font-size:11px}
+.evidence-expand summary{cursor:pointer;font-weight:750;color:#92dff7}
+.evidence-expand .voter-plot{margin-top:10px}
+.decision-panel{background:linear-gradient(140deg,#203755,#142640);border:1px solid #4c7599;border-radius:11px;padding:14px 12px;margin:12px 0}
+.decision-panel[hidden]{display:none}
+.decision-panel h3{color:#a9ecff;font-size:15px;margin:0 0 7px}
+.decision-panel p{margin-bottom:10px}
+.decision-cost{display:grid;gap:5px;color:#b1cadd;font-size:10px;margin:10px 0}
+.decision-cost b{color:#dceeff}
+@media(max-width:1230px){.layout{grid-template-columns:240px minmax(370px,1fr)}.intel{grid-column:1/-1}}
+@media(max-width:760px){.layout{grid-template-columns:1fr}.intel{grid-column:auto}.tutorial-panel{padding:17px 42px 17px 17px}}

@@ -1,5 +1,19 @@
 # ✦ SPACE MINER AI
 
+## V0.5 — Refined tutorial and evidence-first right panel
+
+This branch is forked from **feat/playable-v0-4**. The V0.4 branch is retained for comparison.
+
+- The bright guided tutorial now has its own **X close button**, alongside Skip, Next Hint and the header's **Guided Tutorial** button for replay.
+- The right sidebar follows one decision path: **Selected target (Heat/Spectrum) → KNN Evidence → Your Prediction → Mine**.
+- **KNN Evidence** now shows the actual nearest training planets' **Heat, Spectrum, weighted distance, and stored ORE/EMPTY labels** in a compact table, including **DRAFT** warnings for unverified manual labels.
+- The AI majority result (e.g. **2 ORE / 1 EMPTY**) is part of the KNN Evidence panel. Duplicate vote cards, separate nearest-neighbor buttons and the always-visible teaching box have been removed.
+- The previous voting animation is still available using the small **replay** control; the sensor feature-space plot is an expandable part of the same evidence panel.
+- Your own guess remains a separate conscious decision after reviewing the evidence; mining stays disabled until an answer is chosen.
+
+These numbers are fictional planet features; player annotation remains provisional until verified by scanning. KNN uses weighted Euclidean sensor distances, not the decorative positions in the galaxy map.
+
+
 ## V0.4–V0.5 Learning Prototype (separate branch)
 
 This experimental branch, `feat/playable-v0-4`, starts from the stable V0.3 `feat/playable-v0-1` commit. The older branch remains untouched for an A/B comparison. This PR targets the V0.3 branch, not `main`.
