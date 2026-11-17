@@ -13,8 +13,9 @@ from pydantic import BaseModel, Field
 from space_miner.core import Planet, galaxy, knn, accuracy, baseline, mine, feature_distance
 from space_miner.strategy import ranked_candidates, explanation
 from space_miner.progression import challenge_board, diagnostic_debrief
+from space_miner.novice import novice_galaxy
 
-app = FastAPI(title="Space Miner AI Game API", version="0.4.0")
+app = FastAPI(title="Space Miner AI Game API", version="0.6.0")
 STATIC = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
@@ -38,6 +39,7 @@ class Mission:
     inspected_ids: set[str] = field(default_factory=set)
     training_runs: int = 0
     model_experiments: int = 0
+    training_history: list[dict] = field(default_factory=list)
 
 # Local prototype only: ephemeral in-memory sessions. Do not publicly deploy
 # without authentication, persistence, rate limits and session protection.
@@ -125,6 +127,8 @@ def snapshot(session_id:str,m:Mission,event=None)->dict:
         "mines_left":5-len(m.mined),"scans_left":6-len(m.scanned),
         "k":m.k,"focus":m.focus,"trained":m.trained,"finished":finished,
         "research_points":m.research_points,
+        "training_history":[{key:value for key,value in row.items() if key!="predictions"}
+                            for row in m.training_history],
         "label_audit":list(m.label_audit),
         "saved_model":({key:value for key,value in m.saved_model.items() if key!="predictions"} if m.saved_model else None),
         "model_comparison":model_diff(m),
@@ -150,12 +154,12 @@ def homepage():
 
 @app.get("/api/health")
 def health():
-    return {"ok":True,"service":"space-miner-ai","version":"0.4.0"}
+    return {"ok":True,"service":"space-miner-ai","version":"0.6.0"}
 
 @app.post("/api/missions")
 def create_mission(request:NewMission):
     session_id=token_urlsafe(18)
-    m=Mission(seed=request.seed,world=galaxy(request.seed))
+    m=Mission(seed=request.seed,world=novice_galaxy(request.seed))
     sessions[session_id]=m
     return snapshot(session_id,m)
 
@@ -169,6 +173,19 @@ def train_model(session_id:str,request:TrainChoice):
     if m.ended or len(m.mined)>=5:raise HTTPException(409,"The mission has ended.")
     m.k=request.k;m.focus=request.focus;m.trained=True
     m.training_runs+=1
+    current=model_record(m)
+    previous=m.training_history[-1] if m.training_history else None
+    changed=sum(current["predictions"][p.id] != previous["predictions"][p.id]
+                for p in m.world["mining"]) if previous else None
+    m.training_history.append({
+        "run":m.training_runs,"k":m.k,"focus":m.focus,
+        "training_count":current["training_count"],
+        "accuracy":current["validation_accuracy"],
+        "accuracy_delta":round(current["validation_accuracy"]-previous["accuracy"],4)
+                          if previous else None,
+        "changed_count":changed,
+        "predictions":current["predictions"],
+    })
     comparison=model_diff(m)
     if comparison and (
         comparison["changed_count"] > 0
