@@ -1,5 +1,30 @@
 # ✦ SPACE MINER AI
 
+## V0.6 — Earn better AI predictions
+
+**Branch:** `feat/playable-v0-6` (based on V0.5; no changes to the previous game branches).
+
+### Why the AI now starts weak
+
+The default local mission (seed 12) deliberately has *incomplete, biased training evidence*: most starter surveys concern ore-rich areas, while optional survey reports cover the underrepresented empty regions. This is a real K-nearest-neighbors algorithm, not an artificially rigged success/failure rate.
+
+Using K=3 and Balanced sensors, on **20 held-out validation planets**:
+- First model with 8 starter examples: **55% accuracy**
+- After scanning all 6 reserve examples, 14 verified training examples: **85% accuracy**
+
+Results for other seeds, K settings, player-provided provisional labels or partial scans can differ. Adding a single label can help, hurt or have no effect.
+
+### Three navigation tabs
+
+- **Explore Galaxy:** large star map, planet selection, evidence with genuine nearest neighbors and mining.
+- **Train AI:** K, sensor weighting, labeled samples, scanning, Data Science Lab, and a training-history scorecard.
+- **Missions & Results:** achievements, evidence-based post-mine diagnostics and permanent expedition log.
+
+The prominent tutorial is optional and may be closed with X at any time, then reopened. In tutorial mode it switches to the relevant tab as each step progresses. Model A/B comparison and Research XP remain available.
+
+Run: `python -m pip install -r requirements.txt -r requirements-web.txt` then `python -m uvicorn webapp.server:app --reload`.
+
+
 ## V0.5 — Refined tutorial and evidence-first right panel
 
 This branch is forked from **feat/playable-v0-4**. The V0.4 branch is retained for comparison.
