@@ -20,7 +20,7 @@ def test_default_challenge_has_real_errors_then_improves_with_data():
     }
     weak=accuracy(g["starter"],g["validation"],3)
     stronger=accuracy(g["starter"]+g["reserve"],g["validation"],3)
-    assert weak==.55
+    assert weak==.35
     assert stronger==.85
     assert stronger-weak>=.20
     assert g==novice_galaxy(12)
@@ -36,7 +36,7 @@ def test_training_history_is_server_derived_without_target_labels():
     root=f"/api/missions/{m['session_id']}"
     assert m["training_history"]==[]
     first=client.post(root+"/train",json={"k":3,"focus":"balanced"}).json()
-    assert first["training_history"][0]["accuracy"]==.55
+    assert first["training_history"][0]["accuracy"]==.35
     assert "predictions" not in first["training_history"][0]
     assert first["training_history"][0]["changed_count"] is None
     after=first
@@ -48,8 +48,11 @@ def test_training_history_is_server_derived_without_target_labels():
     assert len(history)==2
     assert history[1]["training_count"]==14
     assert history[1]["accuracy"]==.85
-    assert history[1]["accuracy_delta"]==.30
+    assert history[1]["accuracy_delta"]==.50
     assert history[1]["changed_count"]>=1
+    assert history[0]["precision"]==.35
+    assert history[1]["precision"]==.75
+    assert history[1]["precision_delta"]==.40
     assert all("predictions" not in h for h in history)
 
 
