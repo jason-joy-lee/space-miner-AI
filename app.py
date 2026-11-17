@@ -53,11 +53,7 @@ s=st.session_state
 g=s.world
 training=g["starter"] + [p for p in g["reserve"] if p.id in s.scanned]
 remaining=[p for p in g["mining"] if p.id not in s.mined]
-ranking=ranked_candidates(training,remaining,s.k)
 by_id={p.id:p for p in g["mining"]}
-if s.selected_id not in {p.id for p in remaining}:
-    s.selected_id=ranking[0][0].id if ranking else None
-selected=by_id.get(s.selected_id)
 
 st.title("✦ SPACE MINER AI")
 st.caption("MISSION 01  /  THE HIDDEN ORE GALAXY  ·  A real KNN strategy game")
@@ -155,6 +151,12 @@ with scanbox:
     with st.expander("How should I choose K?"):
         st.write("**K=1:** nearest single example, easily fooled by noisy data. **K=3 or 5:** more examples vote; often steadier. **K=7:** broad voting can miss smaller ore clusters. There is no universally best K.")
         st.write("Look at validation accuracy to compare settings. That score estimates performance on new examples, but does not guarantee any single mine.")
+
+# Compute the ranking only AFTER Streamlit has read the current K selection.
+ranking=ranked_candidates(training,remaining,s.k)
+if s.selected_id not in {p.id for p in remaining}:
+    s.selected_id=ranking[0][0].id if ranking else None
+selected=by_id.get(s.selected_id)
 
 st.divider()
 st.subheader("2 · Choose a planet")
