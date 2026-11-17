@@ -84,7 +84,7 @@ if(!mission?.trained)return;
 const seq=++inspectSeq,session=mission.session_id;
 try{const d=await api('/api/missions/'+session+'/inspect/'+id);if(seq!==inspectSeq||selected!==id||mission?.session_id!==session)return;inspection=d;renderVoterEvidence();renderDecision();if(d.trained&&!d.mined&&tutorialStep===3)showVoteAnimation(d)}catch(err){if(seq===inspectSeq)toast(err.message)}
 }
-function choose(id){selected=id;inspection=null;playerGuess=null;renderMap();renderDetails();renderVoterEvidence();renderDecision();inspectSelected(id);if(tutorialStep===2)advanceTutorial(3)}
+function choose(id){selected=id;inspection=null;playerGuess=null;hide('recommend');renderMap();renderDetails();renderVoterEvidence();renderDecision();inspectSelected(id);if(tutorialStep===2)advanceTutorial(3)}
 function setMission(m){mission=m;k=m.k;focus=m.focus;inspection=null;playerGuess=null;inspectSeq++;if(!m.candidates.some(p=>p.id===selected&&!p.mined))selected=null;render();if(selected&&m.trained)inspectSelected(selected)}
 
 function reveal(event){
