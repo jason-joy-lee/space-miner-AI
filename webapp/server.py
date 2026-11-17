@@ -10,12 +10,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from space_miner.core import Planet, galaxy, knn, accuracy, baseline, mine, feature_distance
+from space_miner.core import Planet, galaxy, knn, accuracy, baseline, mine, feature_distance, classification_metrics
 from space_miner.strategy import ranked_candidates, explanation
 from space_miner.progression import challenge_board, diagnostic_debrief
 from space_miner.novice import novice_galaxy
 
-app = FastAPI(title="Space Miner AI Game API", version="0.6.0")
+app = FastAPI(title="Space Miner AI Game API", version="0.7.0")
 STATIC = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
@@ -83,6 +83,7 @@ def model_record(m:Mission)->dict:
     return {
         "k":m.k,"focus":m.focus,"training_count":len(training),
         "validation_accuracy":round(accuracy(training,m.world["validation"],m.k,m.focus),4),
+        "validation_precision":round(classification_metrics(training,m.world["validation"],m.k,m.focus)["precision"],4),
         "predictions":{p.id:knn(training,p,m.k,m.focus)[0] for p in m.world["mining"]}
     }
 
@@ -97,7 +98,8 @@ def model_diff(m:Mission)->dict|None:
         "before":{key:value for key,value in before.items() if key!="predictions"},
         "after":{key:value for key,value in after.items() if key!="predictions"},
         "changed":changed,"changed_count":len(changed),
-        "accuracy_delta":round(after["validation_accuracy"]-before["validation_accuracy"],4)
+        "accuracy_delta":round(after["validation_accuracy"]-before["validation_accuracy"],4),
+        "precision_delta":round(after["validation_precision"]-before["validation_precision"],4)
     }
 
 def planet_info(p:Planet,ore_visible=False)->dict:
@@ -142,6 +144,9 @@ def snapshot(session_id:str,m:Mission,event=None)->dict:
                     for p in m.world["reserve"] if p.id not in m.scanned],
         "candidates":candidates,
         "evaluation":({"accuracy":round(accuracy(training,m.world["validation"],m.k,m.focus),4),
+                       "precision":round(classification_metrics(training,m.world["validation"],m.k,m.focus)["precision"],4),
+                       "false_positives":classification_metrics(training,m.world["validation"],m.k,m.focus)["false_positive"],
+                       "predicted_ore":classification_metrics(training,m.world["validation"],m.k,m.focus)["predicted_ore"],
                        "baseline":round(baseline(training,m.world["validation"]),4),
                        "scores":{str(k):round(accuracy(training,m.world["validation"],k,m.focus),4) for k in (1,3,5,7)}} if m.trained else None),
         "history":list(m.history),"event":event,
@@ -154,7 +159,7 @@ def homepage():
 
 @app.get("/api/health")
 def health():
-    return {"ok":True,"service":"space-miner-ai","version":"0.6.0"}
+    return {"ok":True,"service":"space-miner-ai","version":"0.7.0"}
 
 @app.post("/api/missions")
 def create_mission(request:NewMission):
@@ -181,6 +186,9 @@ def train_model(session_id:str,request:TrainChoice):
         "run":m.training_runs,"k":m.k,"focus":m.focus,
         "training_count":current["training_count"],
         "accuracy":current["validation_accuracy"],
+        "precision":current["validation_precision"],
+        "precision_delta":round(current["validation_precision"]-previous["precision"],4)
+                          if previous else None,
         "accuracy_delta":round(current["validation_accuracy"]-previous["accuracy"],4)
                           if previous else None,
         "changed_count":changed,
