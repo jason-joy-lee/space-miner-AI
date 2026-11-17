@@ -107,12 +107,15 @@ function startTutorial(){if(!mission){toast('Launch expedition before starting t
 function advanceTutorial(step){if(tutorialStep<0)return;tutorialStep=Math.max(tutorialStep,step);renderTutorial()}
 function skipTutorialStep(){if(tutorialStep>=0&&tutorialStep<7)advanceTutorial(tutorialStep+1)}
 function renderTutorial(){
-const panel=$('tutorial-panel');if(tutorialStep<0||!mission){panel.hidden=true;return}
+const panel=$('tutorial-panel');document.querySelectorAll('.tutorial-highlight').forEach(el=>el.classList.remove('tutorial-highlight'));
+if(tutorialStep<0||!mission){panel.hidden=true;return}
 panel.hidden=false;
 const i=Math.min(tutorialStep,tutorialScript.length-1);
 $('tutorial-title').textContent=(i+1)+' / '+tutorialScript.length+' · '+tutorialScript[i][0];
 $('tutorial-description').textContent=tutorialScript[i][1];
 $('tutorial-progress').textContent='●'.repeat(i+1)+' ○'.repeat(tutorialScript.length-i-1);
+const targets={1:'train',2:'map',3:'voter-evidence',4:'label-target',5:'details',6:'save-model'};
+const highlight=$(targets[i]);if(highlight&&!highlight.hidden)highlight.classList.add('tutorial-highlight');
 }
 function renderLab(){
 if(!mission)return;
