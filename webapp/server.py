@@ -254,7 +254,10 @@ def mine_planet(session_id:str,request:MineChoice):
     if guess_correct: m.research_points+=20
     entry={"planet_id":p.id,"ore":p.ore,"predicted":predicted,"ore_votes":votes,
            "k":m.k,"focus":m.focus,"delta":m.credits-old,
-           "player_guess":request.player_guess,"guess_correct":guess_correct}
+           "player_guess":request.player_guess,"guess_correct":guess_correct,
+           "neighbors":[{"id":n.id,"ore":n.ore,
+                         "provisional":n.id in m.provisional_labels and n.id not in m.scanned}
+                        for n in neighbors]}
     m.history.append(entry)
     return snapshot(session_id,m,{"kind":"mine","planet":planet_info(p,True),"entry":entry})
 
