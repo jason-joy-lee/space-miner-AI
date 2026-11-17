@@ -52,3 +52,5 @@
 #vote-result{padding:12px;border-radius:10px;background:#102849}
 #vote-close{margin-top:8px}
 @media(max-width:980px){.lab-columns{grid-template-columns:1fr}.tutorial-panel{margin:0 12px 14px;flex-direction:column;align-items:flex-start}}
+
+.tutorial-highlight{outline:3px solid #65edcf!important;outline-offset:5px;box-shadow:0 0 0 6px #48d8d21a,0 0 26px #39d7cb99!important;position:relative;z-index:4}
