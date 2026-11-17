@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from space_miner.core import Planet, galaxy, knn, accuracy, baseline, mine, feature_distance
 from space_miner.strategy import ranked_candidates, explanation
 
-app = FastAPI(title="Space Miner AI Game API", version="0.2.0")
+app = FastAPI(title="Space Miner AI Game API", version="0.4.0")
 STATIC = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
@@ -47,6 +47,9 @@ class TrainChoice(BaseModel):
 
 class PlanetChoice(BaseModel):
     planet_id: str
+
+class LabelChoice(PlanetChoice):
+    label: Literal["ore", "empty"]
 
 class LabelChoice(PlanetChoice):
     label: Literal["ore", "empty"]
@@ -143,7 +146,7 @@ def homepage():
 
 @app.get("/api/health")
 def health():
-    return {"ok":True,"service":"space-miner-ai","version":"0.2.0"}
+    return {"ok":True,"service":"space-miner-ai","version":"0.4.0"}
 
 @app.post("/api/missions")
 def create_mission(request:NewMission):
@@ -181,6 +184,30 @@ def scan_planet(session_id:str,request:PlanetChoice):
         if label_correct:m.research_points+=10
     return snapshot(session_id,m,{"kind":"scan","planet":planet_info(found,True),"delta":-5,
                                   "label_verified":previous is not None,"label_correct":label_correct})
+
+@app.post("/api/missions/{session_id}/label")
+def label_training_planet(session_id:str,request:LabelChoice):
+    """Player-provided label is provisional, not confirmed by the game."""
+    m=session_or_404(session_id)
+    if m.ended or len(m.mined)>=5:raise HTTPException(409,"Mission ended.")
+    p=next((q for q in m.world["reserve"] if q.id==request.planet_id),None)
+    if p is None or p.id in m.scanned:
+        raise HTTPException(400,"Only unverified training planets may be labeled.")
+    m.provisional_labels[p.id]=request.label=="ore"
+    m.trained=False
+    return snapshot(session_id,m,{"kind":"label","planet_id":p.id,
+                                  "provisional_label":request.label})
+
+
+@app.post("/api/missions/{session_id}/save-model")
+def save_model(session_id:str):
+    m=session_or_404(session_id)
+    if not m.trained:raise HTTPException(400,"Train a model before saving Model A.")
+    if m.ended or len(m.mined)>=5:raise HTTPException(409,"Mission ended.")
+    m.saved_model=model_record(m)
+    return snapshot(session_id,m,{"kind":"save-model",
+                         "message":"Model A saved. Change K, sensors or labels, then retrain."})
+
 
 @app.get("/api/missions/{session_id}/inspect/{planet_id}")
 def inspect_planet(session_id:str,planet_id:str):
