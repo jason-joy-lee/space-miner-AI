@@ -1,5 +1,42 @@
 # ✦ SPACE MINER AI
 
+## V0.4–V0.5 Learning Prototype (separate branch)
+
+This experimental branch, `feat/playable-v0-4`, starts from the stable V0.3 `feat/playable-v0-1` commit. The older branch remains untouched for an A/B comparison. This PR targets the V0.3 branch, not `main`.
+
+### New features
+
+1. **Interactive cadet tutorial** — a guided on-screen walkthrough for training, choosing a target, seeing KNN votes, collecting labels, mining and comparing experiments; can be skipped or restarted.
+2. **Sequential KNN vote reveal** — displays each actual nearest neighbor's identity, confirmed or provisional training label, and weighted sensor distance before showing the majority. The vote can be replayed on demand.
+3. **Manual training-data annotation** — choose a reserve report and label it ORE or EMPTY. It enters the model as a clearly marked *provisional label*. You may update it. A 5-credit scan independently verifies the label, fixes errors and rewards a correct labeling hypothesis with 10 Research XP. No mining truth is disclosed.
+4. **Frozen Model A vs Model B** — train, save Model A, change K / sensor focus / labels or scan, retrain Model B. Compare real held-out accuracy and each mining planet whose prediction changed. A prediction change is not automatically an improvement.
+5. **Cadet Achievement Board** — seven server-derived objectives: first training, inspect three planets, annotate a report, correct a bad label, make a real model comparison, find three ore deposits, and correctly disagree with the AI. Achievements do not change ore labels or create free credits.
+6. **Post-Mine Scientific Debrief** — review confirmed prediction errors, previous KNN voters, and suggested experiments. These hints do not reveal unmined labels.
+
+### First playtest
+
+- Launch Expedition (the tutorial activates automatically).
+- Train with K=3, inspect a planet, click through each nearest neighbor's vote, and choose your own mining prediction.
+- Label an optional training report, scan it to verify if desired, then retrain.
+- Save the model as A, change K to 7 and retrain. Inspect the prediction-change list and validation accuracy difference.
+- Replay the same seed with another strategy.
+
+**Scientific honesty:** Unverified labels are labeled provisional in both UI and model evidence. They are the player's guesses, not the true mining answers. A model is only compared after training; no hardcoded improvement is awarded.
+
+### How to run both versions
+
+```powershell
+git fetch origin
+git switch --track origin/feat/playable-v0-4
+python -m pip install -r requirements.txt -r requirements-web.txt
+python -m uvicorn webapp.server:app --reload
+```
+
+If the branch already exists locally, use `git switch feat/playable-v0-4` and `git pull`.
+
+To compare with the previous version, stop the server, run `git switch feat/playable-v0-1`, and restart the same command. Stop the server before switching branches so auto-reload does not mix application versions.
+
+
 **Mission 01 — The Hidden Ore Galaxy**: learn machine learning by training a real K-nearest-neighbors (KNN) classifier and making mining decisions under limited resources.
 
 ## V0.3 — Understand the vote, play your own strategy

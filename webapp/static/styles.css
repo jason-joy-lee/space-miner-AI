@@ -20,3 +20,59 @@
 .personal-guess strong{font-size:12px;color:#b6eaff}
 .guess-buttons{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
 .guess-buttons button{font-size:11px;padding:10px 6px}
+
+
+/* V0.4 / V0.5 learning layer */
+.tutorial-panel{max-width:1564px;margin:0 auto 14px;padding:17px 20px;background:linear-gradient(110deg,#184463,#292252);border:1px solid #5a95bd;border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:15px;box-shadow:0 0 18px #329cd62a}
+.tutorial-panel[hidden]{display:none}
+.tutorial-panel h3{color:#a6e9fb;font-size:16px;margin:6px 0}
+.tutorial-panel p{color:#d0e4f5;margin:0 0 8px;font-size:12px;line-height:1.6}
+#tutorial-progress{color:#61e9bd;letter-spacing:3px}
+.tutorial-controls{display:flex;gap:8px;flex-wrap:wrap}
+.lab-panel{background:#111e38;border:1px solid #3e5b84;border-radius:14px;margin-top:15px;padding:18px}
+.lab-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lab-heading h2{font-size:20px;margin:5px 0}
+.lab-columns{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:13px}
+.lab-columns>div{border-radius:10px;border:1px solid #324b70;background:#142544;padding:13px;min-width:0}
+.lab-columns select{width:100%;background:#193252;color:#eef7ff;padding:9px;border:1px solid #496e94;border-radius:8px}
+.lab-actions{display:flex;gap:8px;margin:10px 0 13px}
+.lab-feedback{padding:11px;background:#0e203c;border:1px solid #355174;color:#c2d8eb;border-radius:8px;font-size:11px;line-height:1.6;margin-top:7px}
+.audit-row{border-bottom:1px solid #305174;padding:6px 0}
+.model-comparison{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.model-comparison>div{padding:10px;background:#1a3a5a;border-radius:9px}
+.model-comparison p{font-size:11px;color:#accade;margin:5px 0}
+.model-comparison strong{display:block;color:#67e5b3;font-size:26px}
+.model-comparison small{display:block;color:#9fc5df;font-size:9px;letter-spacing:0}
+.model-change{padding:6px;border-bottom:1px solid #304764}
+.model-change b{color:#6addfa;float:right}
+#vote-steps{min-height:75px;display:grid;gap:8px;margin:12px 0}
+.vote-entry{padding:12px;border-radius:10px;text-align:left;background:#173759;border:1px solid #497395;animation:discover .45s ease both}
+.vote-entry.yes{border-color:#44c99e;color:#aefad9}
+.vote-entry.no{border-color:#a78466;color:#f6d0ac}
+#vote-result{padding:12px;border-radius:10px;background:#102849}
+#vote-close{margin-top:8px}
+@media(max-width:980px){.lab-columns{grid-template-columns:1fr}.tutorial-panel{margin:0 12px 14px;flex-direction:column;align-items:flex-start}}
+
+.tutorial-highlight{outline:3px solid #65edcf!important;outline-offset:5px;box-shadow:0 0 0 6px #48d8d21a,0 0 26px #39d7cb99!important;position:relative;z-index:4}
+
+/* V0.4 missions: earned by verified behavior, not arbitrary client awards. */
+.challenge-board{background:linear-gradient(135deg,#142b4a,#101d38);border:1px solid #42618c;border-radius:14px;padding:16px;margin:15px 0}
+.challenge-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.challenge-head h2{font-size:19px;margin:4px 0 13px}
+.challenge-head span{font-size:11px;color:#76e6bc;font-weight:800}
+.challenge-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.challenge{display:flex;gap:10px;align-items:flex-start;border:1px solid #354c70;background:#122643;padding:12px;border-radius:10px;min-width:0;transition:background .25s}
+.challenge.completed{background:#133b3b;border-color:#328f80}
+.challenge-symbol{font-size:20px;color:#81c8ee;line-height:1}
+.challenge.completed .challenge-symbol{color:#65e3aa}
+.challenge-info b{font-size:12px;display:block;color:#e7f9ff}
+.challenge-info small{font-size:10px;font-weight:500;letter-spacing:0;color:#aac2df;display:block;margin-top:4px}
+.challenge-info span{font-size:10px;color:#8fc4d8;display:block;margin-top:7px}
+.debrief{background:linear-gradient(130deg,#1c344e,#18243f);border:1px solid #c3a267;border-radius:11px;padding:15px;margin-top:15px;font-size:12px;line-height:1.6}
+.debrief[hidden]{display:none}
+.debrief-title{font-size:14px;font-weight:850;color:#ffe3aa}
+.debrief p{color:#d0e3f1;margin:9px 0}
+.debrief b{font-size:11px;color:#79e4c1}
+.debrief ol{padding-left:20px;color:#cee7f5}
+.debrief-neighbors{font-size:10px;color:#9ebbd4}
+@media(max-width:760px){.challenge-grid{grid-template-columns:1fr}}
