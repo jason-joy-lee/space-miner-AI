@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from space_miner.core import Planet, galaxy, knn, accuracy, baseline, mine, feature_distance
 from space_miner.strategy import ranked_candidates, explanation
+from space_miner.progression import challenge_board, diagnostic_debrief
 
 app = FastAPI(title="Space Miner AI Game API", version="0.4.0")
 STATIC = Path(__file__).resolve().parent / "static"
@@ -33,6 +34,10 @@ class Mission:
     provisional_labels: dict[str, bool] = field(default_factory=dict)
     label_audit: list[dict] = field(default_factory=list)
     saved_model: dict | None = None
+    labeled_ids: set[str] = field(default_factory=set)
+    inspected_ids: set[str] = field(default_factory=set)
+    training_runs: int = 0
+    model_experiments: int = 0
 
 # Local prototype only: ephemeral in-memory sessions. Do not publicly deploy
 # without authentication, persistence, rate limits and session protection.
@@ -47,9 +52,6 @@ class TrainChoice(BaseModel):
 
 class PlanetChoice(BaseModel):
     planet_id: str
-
-class LabelChoice(PlanetChoice):
-    label: Literal["ore", "empty"]
 
 class LabelChoice(PlanetChoice):
     label: Literal["ore", "empty"]
@@ -126,6 +128,8 @@ def snapshot(session_id:str,m:Mission,event=None)->dict:
         "label_audit":list(m.label_audit),
         "saved_model":({key:value for key,value in m.saved_model.items() if key!="predictions"} if m.saved_model else None),
         "model_comparison":model_diff(m),
+        "challenges":challenge_board(m),
+        "debrief":diagnostic_debrief(m.history[-1] if m.history else None),
         "training":[planet_info(p,True)|{"new_scan":p.id in m.scanned,
                            "verified":(p.id not in m.provisional_labels or p.id in m.scanned),
                            "provisional":p.id in m.provisional_labels and p.id not in m.scanned} for p in training],
@@ -194,6 +198,7 @@ def label_training_planet(session_id:str,request:LabelChoice):
     if p is None or p.id in m.scanned:
         raise HTTPException(400,"Only unverified training planets may be labeled.")
     m.provisional_labels[p.id]=request.label=="ore"
+    m.labeled_ids.add(p.id)
     m.trained=False
     return snapshot(session_id,m,{"kind":"label","planet_id":p.id,
                                   "provisional_label":request.label})
@@ -217,6 +222,7 @@ def inspect_planet(session_id:str,planet_id:str):
     if p.id in m.mined:return {"planet":planet_info(p,True),"mined":True}
     if not m.trained:return {"planet":planet_info(p),"trained":False}
     predicted,neighbors,votes=knn(known(m),p,m.k,m.focus)
+    m.inspected_ids.add(p.id)
     scouting=sorted((q for q in m.world["reserve"] if q.id not in m.scanned),
                    key=lambda q:(feature_distance(q,p,m.focus),q.id))
     return {"planet":planet_info(p),"trained":True,"k":m.k,"predicted":predicted,
@@ -231,7 +237,7 @@ def mine_planet(session_id:str,request:MineChoice):
     if not m.trained:raise HTTPException(400,"Train your AI before mining.")
     p=next((p for p in m.world["mining"] if p.id==request.planet_id),None)
     if p is None:raise HTTPException(400,"Choose a valid mining candidate.")
-    predicted,_,votes=knn(known(m),p,m.k,m.focus)
+    predicted,neighbors,votes=knn(known(m),p,m.k,m.focus)
     try: after,mined_ids=mine(m.credits,m.mined,p)
     except ValueError as exc:raise HTTPException(400,str(exc)) from exc
     old=m.credits;m.credits,m.mined=after,mined_ids
