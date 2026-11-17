@@ -14,7 +14,7 @@ def endpoint(m,action):
 
 def test_homepage_assets_and_health():
     assert client.get("/").status_code==200
-    assert "SPACE MINER AI" in client.get("/").text
+    assert "<title>Space Miner AI" in client.get("/").text
     assert client.get("/static/game.js").status_code==200
     assert client.get("/static/styles.css").status_code==200
     assert client.get("/api/health").json()["ok"] is True
