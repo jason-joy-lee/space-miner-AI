@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from space_miner.core import Planet, galaxy, knn, accuracy, baseline, mine
+from space_miner.core import Planet, galaxy, knn, accuracy, baseline, mine, feature_distance
 from space_miner.strategy import ranked_candidates, explanation
 
 app = FastAPI(title="Space Miner AI Game API", version="0.2.0")
@@ -27,7 +27,9 @@ class Mission:
     history: list[dict] = field(default_factory=list)
     k: int = 3
     trained: bool = False
+    focus: str = "balanced"
     ended: bool = False
+    research_points: int = 0
 
 # Local prototype only: ephemeral in-memory sessions. Do not publicly deploy
 # without authentication, persistence, rate limits and session protection.
@@ -38,9 +40,13 @@ class NewMission(BaseModel):
 
 class TrainChoice(BaseModel):
     k: Literal[1, 3, 5, 7]
+    focus: Literal["balanced", "heat", "spectrum"] = "balanced"
 
 class PlanetChoice(BaseModel):
     planet_id: str
+
+class MineChoice(PlanetChoice):
+    player_guess: Literal["ore", "empty"] | None = None
 
 def session_or_404(session_id: str) -> Mission:
     m=sessions.get(session_id)
@@ -58,7 +64,7 @@ def planet_info(p:Planet,ore_visible=False)->dict:
 def snapshot(session_id:str,m:Mission,event=None)->dict:
     training=known(m)
     remaining=[p for p in m.world["mining"] if p.id not in m.mined]
-    ranking={p.id:(pred,votes,avg) for p,pred,votes,avg in ranked_candidates(training,remaining,m.k)} if m.trained else {}
+    ranking={p.id:(pred,votes,avg) for p,pred,votes,avg in ranked_candidates(training,remaining,m.k,m.focus)} if m.trained else {}
     by_id={r["planet_id"]:r for r in m.history}
     candidates=[]
     for p in m.world["mining"]:
@@ -75,13 +81,14 @@ def snapshot(session_id:str,m:Mission,event=None)->dict:
     return {
         "session_id":session_id,"seed":m.seed,"credits":m.credits,
         "mines_left":5-len(m.mined),"scans_left":6-len(m.scanned),
-        "k":m.k,"trained":m.trained,"finished":finished,
+        "k":m.k,"focus":m.focus,"trained":m.trained,"finished":finished,
+        "research_points":m.research_points,
         "training":[planet_info(p,True)|{"new_scan":p.id in m.scanned} for p in training],
         "reserve":[planet_info(p) for p in m.world["reserve"] if p.id not in m.scanned],
         "candidates":candidates,
-        "evaluation":({"accuracy":round(accuracy(training,m.world["validation"],m.k),4),
+        "evaluation":({"accuracy":round(accuracy(training,m.world["validation"],m.k,m.focus),4),
                        "baseline":round(baseline(training,m.world["validation"]),4),
-                       "scores":{str(k):round(accuracy(training,m.world["validation"],k),4) for k in (1,3,5,7)}} if m.trained else None),
+                       "scores":{str(k):round(accuracy(training,m.world["validation"],k,m.focus),4) for k in (1,3,5,7)}} if m.trained else None),
         "history":list(m.history),"event":event,
         "medal":("GOLD" if m.credits>=150 else "SILVER" if m.credits>=125 else "BRONZE" if m.credits>=100 else "EXPLORER") if finished else None
     }
@@ -109,8 +116,8 @@ def get_mission(session_id:str):
 def train_model(session_id:str,request:TrainChoice):
     m=session_or_404(session_id)
     if m.ended or len(m.mined)>=5:raise HTTPException(409,"The mission has ended.")
-    m.k=request.k;m.trained=True
-    return snapshot(session_id,m,{"kind":"train","k":m.k})
+    m.k=request.k;m.focus=request.focus;m.trained=True
+    return snapshot(session_id,m,{"kind":"train","k":m.k,"focus":m.focus})
 
 @app.post("/api/missions/{session_id}/scan")
 def scan_planet(session_id:str,request:PlanetChoice):
@@ -129,13 +136,13 @@ def inspect_planet(session_id:str,planet_id:str):
     if p is None:raise HTTPException(404,"Candidate planet not found.")
     if p.id in m.mined:return {"planet":planet_info(p,True),"mined":True}
     if not m.trained:return {"planet":planet_info(p),"trained":False}
-    predicted,neighbors,votes=knn(known(m),p,m.k)
+    predicted,neighbors,votes=knn(known(m),p,m.k,m.focus)
     return {"planet":planet_info(p),"trained":True,"k":m.k,"predicted":predicted,
-            "ore_votes":votes,"explanation":explanation(predicted,votes,m.k),
-            "neighbors":[planet_info(n,True)|{"distance":round(((n.thermal-p.thermal)**2+(n.spectral-p.spectral)**2)**.5,3)} for n in neighbors]}
+            "ore_votes":votes,"focus":m.focus,"explanation":explanation(predicted,votes,m.k),
+            "neighbors":[planet_info(n,True)|{"distance":round(feature_distance(n,p,m.focus),3)} for n in neighbors]}
 
 @app.post("/api/missions/{session_id}/mine")
-def mine_planet(session_id:str,request:PlanetChoice):
+def mine_planet(session_id:str,request:MineChoice):
     m=session_or_404(session_id)
     if m.ended:raise HTTPException(409,"The mission has ended.")
     if not m.trained:raise HTTPException(400,"Train your AI before mining.")
@@ -145,7 +152,11 @@ def mine_planet(session_id:str,request:PlanetChoice):
     try: after,mined_ids=mine(m.credits,m.mined,p)
     except ValueError as exc:raise HTTPException(400,str(exc)) from exc
     old=m.credits;m.credits,m.mined=after,mined_ids
-    entry={"planet_id":p.id,"ore":p.ore,"predicted":predicted,"ore_votes":votes,"k":m.k,"delta":m.credits-old}
+    guess_correct = None if request.player_guess is None else (request.player_guess=="ore")==p.ore
+    if guess_correct: m.research_points+=20
+    entry={"planet_id":p.id,"ore":p.ore,"predicted":predicted,"ore_votes":votes,
+           "k":m.k,"focus":m.focus,"delta":m.credits-old,
+           "player_guess":request.player_guess,"guess_correct":guess_correct}
     m.history.append(entry)
     return snapshot(session_id,m,{"kind":"mine","planet":planet_info(p,True),"entry":entry})
 
