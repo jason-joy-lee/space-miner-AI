@@ -137,8 +137,11 @@ def inspect_planet(session_id:str,planet_id:str):
     if p.id in m.mined:return {"planet":planet_info(p,True),"mined":True}
     if not m.trained:return {"planet":planet_info(p),"trained":False}
     predicted,neighbors,votes=knn(known(m),p,m.k,m.focus)
+    scouting=sorted((q for q in m.world["reserve"] if q.id not in m.scanned),
+                   key=lambda q:(feature_distance(q,p,m.focus),q.id))
     return {"planet":planet_info(p),"trained":True,"k":m.k,"predicted":predicted,
             "ore_votes":votes,"focus":m.focus,"explanation":explanation(predicted,votes,m.k),
+            "scout_options":[planet_info(q)|{"distance":round(feature_distance(q,p,m.focus),3)} for q in scouting[:3]],
             "neighbors":[planet_info(n,True)|{"distance":round(feature_distance(n,p,m.focus),3)} for n in neighbors]}
 
 @app.post("/api/missions/{session_id}/mine")
