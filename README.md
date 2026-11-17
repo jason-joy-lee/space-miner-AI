@@ -1,5 +1,43 @@
 # ✦ SPACE MINER AI
 
+## V0.7 — Visible version, reliable tabs, and measurable AI learning
+
+**Branch:** `feat/playable-v0-7`, based on V0.6. Older versions remain unchanged for A/B comparison.
+
+### What changed
+- A **V0.7** release badge appears at the top-left of the game and on the launch dialog. The server health endpoint reports `0.7.0`. Each future update should increment the displayed release number.
+- **Explore Galaxy**, **Train AI**, and **Missions & Results** are now three real, static, top-level HTML pages. They no longer depend on JavaScript moving an older single-column layout into tab containers. Tabs are sticky near the top.
+- Asset URLs include a new version query string to refresh old browser-cached JavaScript and CSS.
+- The novice AI begins with **severely biased** real training data (7 ore-region examples versus 1 empty-region example). The six reserve reports emphasize the underrepresented empty region. Unmined labels are never leaked or rewritten.
+- The **Train AI** tab shows *accuracy* and *ORE precision* both before and after scanning new data; it also shows how many model predictions change. Precision means: of all planets predicted ORE on the held-out evaluation set, how many actually had ore?
+
+### Reproducible default example
+With seed 12, K=3 and Balanced sensors on 20 held-out validation planets:
+
+| Model | Training examples | Accuracy | ORE precision |
+|---|---:|---:|---:|
+| Initial, incomplete | 8 | **35%** | **35%** |
+| After verifying all six new reports | 14 | **85%** | **75%** |
+
+The AI has not been randomly sabotaged: this is a deliberately **unrepresentative sample**, a genuine problem in machine learning. Player-added provisional labels can still be wrong. Other galaxy seeds, scan subsets and K/weight combinations may have different outcomes.
+
+### Important: launch the WEB game, not the old Streamlit page
+
+```powershell
+git fetch origin
+git switch --track origin/feat/playable-v0-7
+python -m pip install -r requirements.txt -r requirements-web.txt
+python -m uvicorn webapp.server:app --reload
+```
+
+Open **http://127.0.0.1:8000**. The older `streamlit run app.py` page at port **8501** is a different, archived interface and **does not contain the new navigation tabs**.
+
+If the browser appears to show an old interface, use **Ctrl + Shift + R**; check for the **V0.7** badge and visit **http://127.0.0.1:8000/api/health** to confirm the server version. Stop and restart your old server if its version is outdated.
+
+### Testing
+GitHub Actions runs the Python API tests, a JavaScript syntax check, and a **real headless Chromium browser test** that launches the mission, switches tabs, verifies the version badge, scans all six reports, and checks the accuracy/precision improvement.
+
+
 ## V0.6 — Earn better AI predictions
 
 **Branch:** `feat/playable-v0-6` (based on V0.5; no changes to the previous game branches).
