@@ -1,8 +1,9 @@
 """V0.6 challenge generator: a deliberately *undertrained* real KNN mission.
 
-The starter survey over-samples ore-rich regions (6 ORE-like, 2 EMPTY-like).
-The six optional reserve surveys represent under-sampled regions (2 ORE-like,
-4 EMPTY-like). Players improve predictions by labeling/independently scanning
+The starter survey severely over-samples ore-rich regions (7 ORE-like,
+1 EMPTY-like). The six optional reserve surveys represent under-sampled empty
+regions (1 ORE-like, 5 EMPTY-like). The validation set includes more empty
+planets to expose the model's false-positive ore predictions. Players improve predictions by labeling/independently scanning
 those reports. No hidden mining labels are manipulated after a decision.
 """
 from random import Random
@@ -26,8 +27,8 @@ def novice_galaxy(seed: int = 12) -> dict[str, list[Planet]]:
         return out
 
     return {
-        "starter": survey("TR", [True] * 6 + [False] * 2),
-        "reserve": survey("SC", [True] * 2 + [False] * 4),
-        "validation": survey("VA", [True, False] * 10),
-        "mining": survey("PX", [True, False] * 6),
+        "starter": survey("TR", [True] * 7 + [False]),
+        "reserve": survey("SC", [True] + [False] * 5),
+        "validation": survey("VA", [True, False] * 6 + [False] * 8),
+        "mining": survey("PX", [True, False] * 4 + [False] * 4),
     }
