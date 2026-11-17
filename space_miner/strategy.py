@@ -1,18 +1,16 @@
 """Presentation helpers without hidden-label leakage."""
-from math import dist
-from .core import knn
+from .core import knn, feature_distance
 
 
-def ranked_candidates(training, candidates, k):
+def ranked_candidates(training, candidates, k, focus="balanced"):
     """Rank by KNN ore vote; ties use average neighbor distance and planet ID.
 
     Vote fractions are NOT calibrated ore probabilities.
     """
     ranked = []
     for planet in candidates:
-        predicted, neighbors, ore_votes = knn(training, planet, k)
-        avg_distance = sum(dist((p.thermal, p.spectral),
-                                (planet.thermal, planet.spectral))
+        predicted, neighbors, ore_votes = knn(training, planet, k, focus)
+        avg_distance = sum(feature_distance(p, planet, focus)
                            for p in neighbors) / k
         ranked.append((planet, predicted, ore_votes, avg_distance))
     return sorted(ranked, key=lambda x: (not x[1], -x[2], x[3], x[0].id))
