@@ -2,6 +2,7 @@
 (()=>{'use strict';
 const $=id=>document.getElementById(id),positions=[[16,18],[38,13],[63,18],[84,24],[21,41],[40,39],[66,42],[85,51],[14,70],[36,76],[62,76],[83,79]];
 let mission=null,k=3,focus='balanced',selected=null,inspection=null,playerGuess=null,inspectSeq=0,sessionSeed=12,busy=false;
+let tutorialStep=-1,voterStep=-1,voterData=null,trainingSeen=false;
 const cls=id=>'p'+((Number(id.split('-')[1])-1)%12),orb=id=>'<span class="orb '+cls(id)+'"></span>';
 const pct=v=>Math.round(v*100)+'%',hide=id=>$(id).hidden=true,show=id=>$(id).hidden=false;
 const e=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -24,7 +25,7 @@ $('train').textContent='⚡ '+(mission.trained&&k===mission.k&&focus===mission.f
 $('tip').innerHTML=mission.trained?(k===mission.k&&focus===mission.focus?'AI ONLINE: inspect its real voters, make a guess, then mine.':'K changed. Click TRAIN again to update predictions.'):'STEP 1: click TRAIN AI to reveal the ore predictions.';
 if(mission.evaluation){const ev=mission.evaluation;$('evaluation').innerHTML='ACCURACY ON 20 TEST PLANETS<br><strong>'+pct(ev.accuracy)+'</strong> · K='+mission.k+' · '+e(mission.focus)+' focus<small class="scores">'+Object.entries(ev.scores).map(([n,v])=>'K'+n+': '+pct(v)).join(' &nbsp; | &nbsp; ')+'</small><p class="muted">Baseline '+pct(ev.baseline)+'. These are real Python KNN test results, not guaranteed mining outcomes.</p>'}
 else $('evaluation').innerHTML='TEST ACCURACY<br><strong>Not trained</strong>';
-renderMap();renderDetails();renderVoterEvidence();
+renderMap();renderDetails();renderVoterEvidence();renderLab();renderTutorial();
 const best=rank();
 if(best&&!mission.finished){show('recommend');$('recommend').innerHTML='<small>AI TOP RECOMMENDATION</small><strong>'+e(best.id)+'</strong><p>'+best.ore_votes+'/'+mission.k+' known neighbors have ore. Not a probability.</p><button id="inspect-best" class="outline wide">INSPECT THIS PLANET</button>';$('inspect-best').onclick=()=>choose(best.id)}else hide('recommend');
 $('history').innerHTML=mission.history.length?mission.history.map(r=>'<span class="chip '+(r.ore?'good':'bad')+'">'+e(r.planet_id)+' '+(r.ore?'◆ ORE':'◌ EMPTY')+' '+(r.delta>0?'+':'')+r.delta+'</span>').join(''):'No discoveries yet.';
@@ -65,9 +66,9 @@ if($('scout-suggest'))$('scout-suggest').onclick=()=>{$('scan-target').value=ins
 async function inspectSelected(id){
 if(!mission?.trained)return;
 const seq=++inspectSeq,session=mission.session_id;
-try{const d=await api('/api/missions/'+session+'/inspect/'+id);if(seq!==inspectSeq||selected!==id||mission?.session_id!==session)return;inspection=d;renderVoterEvidence()}catch(err){if(seq===inspectSeq)toast(err.message)}
+try{const d=await api('/api/missions/'+session+'/inspect/'+id);if(seq!==inspectSeq||selected!==id||mission?.session_id!==session)return;inspection=d;renderVoterEvidence();if(d.trained&&!d.mined&&tutorialStep===3)showVoteAnimation(d)}catch(err){if(seq===inspectSeq)toast(err.message)}
 }
-function choose(id){selected=id;inspection=null;playerGuess=null;renderMap();renderDetails();renderVoterEvidence();inspectSelected(id)}
+function choose(id){selected=id;inspection=null;playerGuess=null;renderMap();renderDetails();renderVoterEvidence();inspectSelected(id);if(tutorialStep===2)advanceTutorial(3)}
 function setMission(m){mission=m;k=m.k;focus=m.focus;inspection=null;playerGuess=null;inspectSeq++;if(!m.candidates.some(p=>p.id===selected&&!p.mined))selected=null;render();if(selected&&m.trained)inspectSelected(selected)}
 
 function reveal(event){
@@ -80,10 +81,10 @@ $('reveal-credits').textContent=scan?'−5 CREDITS / +1 SAMPLE':(event.entry.del
 show('reveal');
 }
 function end(){if(!mission)return;$('medal').textContent=mission.medal+' EXPEDITION';$('recap').textContent='Final credits: '+mission.credits+'. Ore discovered: '+mission.history.filter(x=>x.ore).length+' out of '+mission.history.length+' mines. Compare your results with another K.';show('ending')}
-async function create(seed=12){await act(async()=>{sessionSeed=seed;selected=null;setMission(await api('/api/missions','POST',{seed}));hide('intro');hide('ending');hide('reveal');toast('EXPEDITION LAUNCHED · TRAIN AI WITH K=3')})}
-async function train(){if(!mission)return;await act(async()=>{const d=await api('/api/missions/'+mission.session_id+'/train','POST',{k,focus});setMission(d);toast('K='+d.k+' · TEST ACCURACY '+pct(d.evaluation.accuracy))})}
-async function scan(){if(!mission)return;const id=$('scan-target').value;if(!id)return;await act(async()=>{const d=await api('/api/missions/'+mission.session_id+'/scan','POST',{planet_id:id});setMission(d);reveal(d.event)})}
-async function minePlanet(id){if(!mission)return;await act(async()=>{const d=await api('/api/missions/'+mission.session_id+'/mine','POST',{planet_id:id,player_guess:playerGuess});setMission(d);reveal(d.event)})}
+async function create(seed=12){await act(async()=>{sessionSeed=seed;selected=null;setMission(await api('/api/missions','POST',{seed}));hide('intro');hide('ending');hide('reveal');toast('EXPEDITION LAUNCHED · TRAIN AI WITH K=3');startTutorial()})}
+async function train(){if(!mission)return;await act(async()=>{const d=await api('/api/missions/'+mission.session_id+'/train','POST',{k,focus});setMission(d);trainingSeen=true;if(tutorialStep===1)advanceTutorial(2);toast('K='+d.k+' · TEST ACCURACY '+pct(d.evaluation.accuracy))})}
+async function scan(){if(!mission)return;const id=$('scan-target').value;if(!id)return;await act(async()=>{const d=await api('/api/missions/'+mission.session_id+'/scan','POST',{planet_id:id});setMission(d);reveal(d.event);if(tutorialStep===4)advanceTutorial(5)})}
+async function minePlanet(id){if(!mission)return;await act(async()=>{const d=await api('/api/missions/'+mission.session_id+'/mine','POST',{planet_id:id,player_guess:playerGuess});setMission(d);reveal(d.event);if(tutorialStep===5)advanceTutorial(6)})}
 async function math(){const p=cur();if(!mission?.trained||!p){toast('Train and select a planet first');return}await act(async()=>{const d=await api('/api/missions/'+mission.session_id+'/inspect/'+p.id);if(d.mined){toast('Select an unmined planet');return}
 const X=x=>42+x*47,Y=y=>280-y*24;let svg='<svg viewBox="0 0 555 315">';
 for(let i=0;i<=5;i++){let n=i*2;svg+='<line x1="'+X(n)+'" y1="30" x2="'+X(n)+'" y2="280" stroke="#314b73"/><line x1="42" y1="'+Y(n)+'" x2="512" y2="'+Y(n)+'" stroke="#314b73"/>'}
@@ -91,9 +92,88 @@ d.neighbors.forEach(n=>svg+='<line x1="'+X(p.heat)+'" y1="'+Y(p.spectrum)+'" x2=
 mission.training.forEach(n=>svg+='<circle cx="'+X(n.heat)+'" cy="'+Y(n.spectrum)+'" r="6" fill="'+(n.ore?'#52edb8':'#ffc086')+'"/>');
 svg+='<circle cx="'+X(p.heat)+'" cy="'+Y(p.spectrum)+'" r="11" fill="#fff" stroke="#28c9f2" stroke-width="3"/><text x="270" y="307" fill="#abc8e9" text-anchor="middle" font-size="12">HEAT</text><text x="15" y="165" fill="#abc8e9" transform="rotate(-90 15 165)" font-size="12">SPECTRUM</text></svg>';
 $('mathplot').innerHTML=svg;$('neighbors').innerHTML=d.neighbors.map(n=>'<span class="neighbor">'+e(n.id)+' · '+(n.ore?'ORE':'EMPTY')+' · distance '+n.distance+'</span>').join('');show('learn')})}
+
+const tutorialScript=[
+["Welcome, cadet","Your mission: understand the real evidence before taking risks. Start by reading a training report; scan, train, inspect, predict and improve."],
+["Train your first model","Choose K=3, then press TRAIN AI. The AI uses known labels and the two synthetic sensor readings."],
+["Choose a target","Click a candidate planet in the star map. The right side will show its data and actual K nearest surveyed voters."],
+["Reveal the voters","Use the interactive vote reveal: each surveyed planet votes its confirmed ORE or EMPTY label."],
+["Gather evidence","Optional but recommended: annotate an unverified report and verify it with a paid scan. You can also continue after observing the voters."],
+["Make your prediction","Select I SAY ORE or I SAY EMPTY, then mine to reveal the truth."],
+["Compare and improve","Save Model A, change K, sensor focus or annotated training data, and train Model B. Review the changed predictions."],
+["Cadet graduation","You've explored the entire learning loop. Continue mining or replay the same galaxy to test a new idea."]
+];
+function startTutorial(){if(!mission){toast('Launch expedition before starting tutorial');return}tutorialStep=0;renderTutorial()}
+function advanceTutorial(step){if(tutorialStep<0)return;tutorialStep=Math.max(tutorialStep,step);renderTutorial()}
+function renderTutorial(){
+const panel=$('tutorial-panel');if(tutorialStep<0||!mission){panel.hidden=true;return}
+panel.hidden=false;
+const i=Math.min(tutorialStep,tutorialScript.length-1);
+$('tutorial-title').textContent=(i+1)+' / '+tutorialScript.length+' · '+tutorialScript[i][0];
+$('tutorial-description').textContent=tutorialScript[i][1];
+$('tutorial-progress').textContent='●'.repeat(i+1)+' ○'.repeat(tutorialScript.length-i-1);
+}
+function renderLab(){
+if(!mission)return;
+const choices=mission.reserve||[];
+$('label-target').innerHTML=choices.map(p=>'<option value="'+e(p.id)+'">'+e(p.id)+' · H '+p.heat+' · S '+p.spectrum+(p.provisional_label?' · draft '+e(p.provisional_label):'')+'</option>').join('')||'<option value="">No unverified reports</option>';
+$('label-ore').disabled=$('label-empty').disabled=!choices.length||mission.finished;
+$('save-model').disabled=!mission.trained||mission.finished;
+$('label-status').textContent=choices.length?'Provisional labels join training data, but may be wrong. Use a scan to verify your hypothesis.':'Every optional training report has been verified.';
+$('label-audit').innerHTML=mission.label_audit.length?mission.label_audit.map(row=>'<div class="audit-row">'+e(row.planet_id)+' · you labeled '+e(row.player_label)+' · verified '+e(row.verified_label)+' · '+(row.correct?'✓ Correct (+10 XP)':'✕ Incorrect; label corrected')+'</div>').join(''):'No verified manual labels yet.';
+const comparison=mission.model_comparison;
+if(comparison){
+let changes=comparison.changed.map(row=>'<div class="model-change">'+e(row.id)+' <b>'+(row.before?'ORE':'EMPTY')+' → '+(row.after?'ORE':'EMPTY')+'</b></div>').join('');
+$('comparison').innerHTML='<div class="model-comparison"><div><b>MODEL A</b><p>K='+comparison.before.k+' · '+e(comparison.before.focus)+'</p><strong>'+pct(comparison.before.validation_accuracy)+'</strong><small>'+comparison.before.training_count+' training examples</small></div><div><b>MODEL B</b><p>K='+comparison.after.k+' · '+e(comparison.after.focus)+'</p><strong>'+pct(comparison.after.validation_accuracy)+'</strong><small>'+comparison.after.training_count+' training examples</small></div></div><p><b>'+comparison.changed_count+' / 12</b> mining predictions changed. Accuracy delta '+(comparison.accuracy_delta>=0?'+':'')+pct(comparison.accuracy_delta)+'.</p>'+(changes||'<p>No predictions changed. Try another K, feature focus or a label.</p>');
+if(tutorialStep===6)advanceTutorial(7);
+}else if(mission.saved_model){
+$('comparison').textContent='Model A saved: K='+mission.saved_model.k+', '+mission.saved_model.focus+' focus, accuracy '+pct(mission.saved_model.validation_accuracy)+'. Change an input and retrain to see Model B.';
+}else $('comparison').textContent='First train your AI and SAVE CURRENT AS MODEL A. Change K, sensor weight or manual labels, then retrain to see real prediction changes.';
+}
+async function labelReport(label){
+if(!mission)return;
+const id=$('label-target').value;
+if(!id)return;
+await act(async()=>{
+const d=await api('/api/missions/'+mission.session_id+'/label','POST',{planet_id:id,label});
+setMission(d);toast('PROVISIONAL LABEL SAVED: '+id+' = '+label.toUpperCase()+'. Train or verify with SCAN.');
+if(tutorialStep===4)advanceTutorial(5);
+});
+}
+async function saveModel(){
+if(!mission)return;
+await act(async()=>{setMission(await api('/api/missions/'+mission.session_id+'/save-model','POST'));toast('MODEL A SAVED — change a setting and retrain')});
+}
+function showVoteAnimation(data){
+voterData=data;voterStep=-1;
+$('vote-title').textContent=data.planet.id+' · '+data.k+' NEAREST VOTERS';
+$('vote-steps').innerHTML='';
+$('vote-result').textContent='Each known planet votes according to its currently labeled training record. A provisional label may be wrong until verified.';
+$('vote-next').textContent='REVEAL FIRST VOTER →';
+show('voting');
+}
+function nextVoter(){
+if(!voterData)return;
+voterStep++;
+const list=voterData.neighbors;
+if(voterStep<list.length){
+const n=list[voterStep],line=document.createElement('div');
+line.className='vote-entry '+(n.ore?'yes':'no');
+line.textContent=(voterStep+1)+'. '+n.id+' · Distance '+n.distance+' · votes '+(n.ore?'ORE':'EMPTY')+' ('+(n.provisional?'provisional':'verified')+')';
+$('vote-steps').appendChild(line);
+$('vote-next').textContent=voterStep+1===list.length?'SHOW FINAL VOTE →':'NEXT VOTER →';
+}else{
+$('vote-result').textContent=voterData.ore_votes+' ORE / '+(voterData.k-voterData.ore_votes)+' EMPTY — KNN predicts '+(voterData.predicted?'ORE':'EMPTY')+'. This is a majority label, NOT a probability or confirmed ore result.';
+$('vote-next').textContent='CLOSE AND CONTINUE';
+if(tutorialStep===3)advanceTutorial(4);
+if(voterStep>list.length)hide('voting');
+}
+}
+
 $('launch').onclick=()=>{if(mission){hide('intro');return}create(12)};$('train').onclick=train;$('scan').onclick=scan;
 $('koptions').onclick=ev=>{const b=ev.target.closest('[data-k]');if(!b)return;k=Number(b.dataset.k);render();if(mission?.trained&&k!==mission.k)toast('K CHANGED · CLICK TRAIN TO UPDATE PREDICTIONS')};
-$('focus-options').onclick=ev=>{const b=ev.target.closest('[data-focus]');if(!b)return;focus=b.dataset.focus;render();if(mission?.trained&&focus!==mission.focus)toast('SENSOR FOCUS CHANGED · TRAIN TO APPLY')};$('builder').onclick=math;$('close-learn').onclick=()=>hide('learn');
+$('focus-options').onclick=ev=>{const b=ev.target.closest('[data-focus]');if(!b)return;focus=b.dataset.focus;render();if(mission?.trained&&focus!==mission.focus)toast('SENSOR FOCUS CHANGED · TRAIN TO APPLY')};$('tutorial-start').onclick=startTutorial;$('tutorial-skip').onclick=()=>{tutorialStep=-1;renderTutorial()};$('save-model').onclick=saveModel;$('label-ore').onclick=()=>labelReport('ore');$('label-empty').onclick=()=>labelReport('empty');$('vote-next').onclick=nextVoter;$('vote-close').onclick=()=>{hide('voting');if(tutorialStep===3)advanceTutorial(4)};
+$('builder').onclick=math;$('close-learn').onclick=()=>hide('learn');
 $('help').onclick=()=>{$('launch').textContent='RETURN TO GAME';show('intro')};
 $('restart').onclick=()=>create(sessionSeed);$('retry').onclick=()=>create(sessionSeed);$('next').onclick=()=>create(sessionSeed+1);
 $('continue').onclick=()=>{hide('reveal');if(mission?.finished)end()};
