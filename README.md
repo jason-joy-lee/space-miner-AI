@@ -2,7 +2,7 @@
 
 ## V0.4–V0.5 Learning Prototype (separate branch)
 
-This experimental branch, `feat/interactive-learning-v0-4`, starts from the stable V0.3 `feat/playable-v0-1` commit. The older branch remains untouched for an A/B comparison. This PR targets the V0.3 branch, not `main`.
+This experimental branch, `feat/playable-v0-4`, starts from the stable V0.3 `feat/playable-v0-1` commit. The older branch remains untouched for an A/B comparison. This PR targets the V0.3 branch, not `main`.
 
 ### New features
 
@@ -25,12 +25,12 @@ This experimental branch, `feat/interactive-learning-v0-4`, starts from the stab
 
 ```powershell
 git fetch origin
-git switch --track origin/feat/interactive-learning-v0-4
+git switch --track origin/feat/playable-v0-4
 python -m pip install -r requirements.txt -r requirements-web.txt
 python -m uvicorn webapp.server:app --reload
 ```
 
-If the branch already exists locally, use `git switch feat/interactive-learning-v0-4` and `git pull`.
+If the branch already exists locally, use `git switch feat/playable-v0-4` and `git pull`.
 
 To compare with the previous version, stop the server, run `git switch feat/playable-v0-1`, and restart the same command. Stop the server before switching branches so auto-reload does not mix application versions.
 
