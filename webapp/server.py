@@ -14,8 +14,9 @@ from space_miner.core import Planet, galaxy, knn, accuracy, baseline, mine, feat
 from space_miner.strategy import ranked_candidates, explanation
 from space_miner.progression import challenge_board, diagnostic_debrief
 from space_miner.novice import novice_galaxy
+from webapp.version import VERSION
 
-app = FastAPI(title="Space Miner AI Game API", version="0.7.0")
+app = FastAPI(title="Space Miner AI Game API", version=VERSION)
 STATIC = Path(__file__).resolve().parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
@@ -159,7 +160,7 @@ def homepage():
 
 @app.get("/api/health")
 def health():
-    return {"ok":True,"service":"space-miner-ai","version":"0.7.0"}
+    return {"ok":True,"service":"space-miner-ai","version":VERSION}
 
 @app.post("/api/missions")
 def create_mission(request:NewMission):
