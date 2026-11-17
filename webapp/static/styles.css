@@ -120,3 +120,34 @@
 .decision-cost b{color:#dceeff}
 @media(max-width:1230px){.layout{grid-template-columns:240px minmax(370px,1fr)}.intel{grid-column:1/-1}}
 @media(max-width:760px){.layout{grid-template-columns:1fr}.intel{grid-column:auto}.tutorial-panel{padding:17px 42px 17px 17px}}
+
+
+/* V0.6: spacious, mutually exclusive top navigation pages. */
+#legacy-layout[hidden],.game-page[hidden]{display:none!important}
+.game-tabs{max-width:1550px;margin:8px auto 0;padding:0 18px;display:flex;gap:10px;align-items:center}
+.game-tab{border:1px solid #3a5379;background:#142541;color:#b5c8e2;border-radius:13px 13px 0 0;padding:14px 23px;font-size:14px;font-weight:800;min-width:160px}
+.game-tab:hover{color:#fff;background:#24436d}
+.game-tab.active{color:#fff;background:linear-gradient(115deg,#17618c,#423e87);border-color:#65c9f3;box-shadow:inset 0 3px 0 #5be3f5}
+.game-tab-panels{max-width:1550px;padding:22px 18px 28px;margin:auto;min-height:680px;background:linear-gradient(145deg,#0e1a30,#0b1428);border:1px solid #30466d;border-radius:0 16px 16px 16px}
+.explore-layout{display:grid;grid-template-columns:minmax(0,1fr) 370px;align-items:start;gap:18px}
+.explore-layout>.central{min-width:0}
+.explore-layout>.intel{position:relative;max-width:none}
+.explore-layout .map{height:590px}
+.training-layout{display:grid;grid-template-columns:355px minmax(0,1fr);gap:24px;align-items:start}
+.training-layout>.lab-panel{margin:0}
+.training-layout .lab-columns{grid-template-columns:1fr;gap:17px}
+.training-layout .panel{min-width:0}
+#page-missions #mission-tasks{display:grid;gap:20px}
+#page-missions .challenge-board,#page-missions .log,#page-missions .debrief{margin:0}
+#page-missions .challenge-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.training-journey{background:linear-gradient(125deg,#133954,#1b2752);border:1px solid #487e9b;border-radius:12px;padding:14px;margin:13px 0;color:#c7e2f6}
+.training-journey h3{color:#8fe7ff;font-size:13px}
+.training-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:12px 0}
+.training-stats>div{padding:7px;background:#142b4c;border-radius:7px}
+.training-stats small{font-size:8px;letter-spacing:0;display:block;color:#b0d2e6}
+.training-stats strong{font-size:19px;color:#e1f7fa;display:block;margin-top:5px}
+.training-stats strong.better{color:#65e4af}
+.training-stats strong.worse{color:#ffb27b}
+.training-chip{display:inline-block;border:1px solid #446d94;background:#163554;border-radius:8px;padding:6px;margin:3px;font-size:10px;color:#c9e6f6}
+@media(max-width:1120px){.explore-layout{grid-template-columns:1fr}.explore-layout>.intel{max-width:none}.training-layout{grid-template-columns:1fr 1fr}.game-tab-panels{min-height:520px}}
+@media(max-width:760px){.game-tabs{gap:4px;padding:0 8px}.game-tab{min-width:0;flex:1;font-size:11px;padding:12px 4px}.game-tab-panels{padding:12px;border-radius:0 0 12px 12px}.training-layout{grid-template-columns:1fr}.explore-layout .map{height:470px}#page-missions .challenge-grid{grid-template-columns:1fr}}
