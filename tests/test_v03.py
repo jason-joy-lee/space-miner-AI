@@ -72,3 +72,18 @@ def test_strategy_reproducible():
     b=client.post(url(b,"train"),json={"k":5,"focus":"spectrum"}).json()
     assert a["candidates"]==b["candidates"]
     assert a["evaluation"]==b["evaluation"]
+
+def test_targeted_scouting_never_exposes_hidden_reserve_labels():
+    state=start()
+    state=client.post(url(state,"train"),json={"k":3,"focus":"heat"}).json()
+    selected=state["candidates"][0]
+    details=client.get(url(state,f"inspect/{selected['id']}")).json()
+    scouts=details["scout_options"]
+    assert len(scouts)==3
+    assert all("ore" not in scout for scout in scouts)
+    assert scouts==sorted(scouts,key=lambda scout:(scout["distance"],scout["id"]))
+    ids={p["id"] for p in state["reserve"]}
+    assert all(q["id"] in ids for q in scouts)
+    new_state=client.post(url(state,"scan"),json={"planet_id":scouts[0]["id"]}).json()
+    assert new_state["trained"] is False
+    assert new_state["credits"]==95
