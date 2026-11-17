@@ -14,19 +14,11 @@ function cur(){return mission?.candidates.find(p=>p.id===selected)}
 
 let activePage='explore';
 function initializeTabs(){
-const legacy=$('legacy-layout');
-if(legacy?.dataset.moved)return;
-document.querySelector('#explore-map').appendChild(document.querySelector('.central'));
-document.querySelector('#explore-intel').appendChild(document.querySelector('.intel'));
-document.querySelector('#train-controls').appendChild(document.querySelector('#legacy-layout > aside.panel'));
-document.querySelector('#train-lab').appendChild(document.querySelector('.lab-panel'));
-const missions=$('mission-tasks');
-for(const selector of ['.challenge-board','.debrief','.log'])missions.appendChild(document.querySelector(selector));
-legacy.dataset.moved='yes';legacy.hidden=true;
-document.querySelectorAll('.game-tab').forEach(tab=>{
-tab.onclick=()=>setPage(tab.dataset.page);
-});
-setPage('explore');
+  // HTML already contains the three complete pages; only wire tab buttons.
+  document.querySelectorAll('.game-tab').forEach(tab=>{
+    tab.onclick=()=>setPage(tab.dataset.page);
+  });
+  setPage('explore');
 }
 function setPage(name){
 if(!['explore','train','missions'].includes(name))return;
@@ -41,11 +33,12 @@ const el=$('training-journey');
 if(!el||!mission)return;
 const history=mission.training_history||[];
 if(!history.length){el.innerHTML='<h3>TRAINING PROGRESS</h3><p class="muted">Train once to establish your first result. Scan missing examples, then train again to see whether accuracy improves.</p>';return}
-const latest=history[history.length-1],first=history[0],gain=Math.round((latest.accuracy-first.accuracy)*100);
+const latest=history[history.length-1],first=history[0],gain=Math.round((latest.accuracy-first.accuracy)*100),precisionGain=Math.round((latest.precision-first.precision)*100);
 el.innerHTML='<h3>TRAINING PROGRESS</h3>'+
-'<div class="training-stats"><div><small>FIRST MODEL</small><strong>'+pct(first.accuracy)+'</strong></div><div><small>CURRENT MODEL</small><strong>'+pct(latest.accuracy)+'</strong></div><div><small>CHANGE</small><strong class="'+(gain>0?'better':gain<0?'worse':'')+'">'+(gain>0?'+':'')+gain+' points</strong></div></div>'+
+'<div class="training-stats"><div><small>FIRST ACCURACY</small><strong>'+pct(first.accuracy)+'</strong></div><div><small>NOW ACCURACY</small><strong>'+pct(latest.accuracy)+'</strong></div><div><small>FIRST PRECISION</small><strong>'+pct(first.precision)+'</strong></div><div><small>NOW PRECISION</small><strong>'+pct(latest.precision)+'</strong></div></div>'+
+'<p class="muted">Accuracy change: '+(gain>0?'+':'')+gain+' points. Precision change: '+(precisionGain>0?'+':'')+precisionGain+' points. Precision is the share of ORE predictions that were actually ore.</p>'+
 '<p class="muted">Training runs: '+history.length+'. Examples: '+first.training_count+' → '+latest.training_count+'. '+(history.length===1?'The first model is deliberately limited by biased evidence. Collect more diverse samples.':latest.accuracy_delta>0?'Improvement! Your latest model classified more validation planets correctly.':latest.accuracy_delta<0?'This change made your model worse. Inspect the labels and try another strategy.':'No improvement this time. Try a different scan, K or focus.')+'</p>'+
-'<div class="training-history">'+history.map(row=>'<span class="training-chip">Run '+row.run+': '+pct(row.accuracy)+' · '+row.training_count+' examples</span>').join('')+'</div>';
+'<div class="training-history">'+history.map(row=>'<span class="training-chip">Run '+row.run+': '+pct(row.accuracy)+' accuracy · '+pct(row.precision)+' precision · '+row.training_count+' examples</span>').join('')+'</div>';
 }
 
 function render(){
@@ -60,7 +53,7 @@ document.querySelectorAll('[data-k]').forEach(button=>button.classList.toggle('a
 $('khelp').textContent=({1:'K=1 follows the single nearest example. It can be fooled by noisy data.',3:'K=3 asks the 3 most similar examples. 2/3 ORE votes predicts ore; 1/3 predicts empty.',5:'K=5 gathers a broader vote. More examples do not always mean better results.',7:'K=7 asks almost every starter example. It can overlook smaller ore clusters.'})[k];
 $('train').textContent='⚡ '+(mission.trained&&k===mission.k&&focus===mission.focus?'RETRAIN AI':'TRAIN AI WITH K='+k);
 $('tip').innerHTML=mission.trained?(k===mission.k&&focus===mission.focus?'AI ONLINE: inspect its real voters, make a guess, then mine.':'K changed. Click TRAIN again to update predictions.'):'STEP 1: click TRAIN AI to reveal the ore predictions.';
-if(mission.evaluation){const ev=mission.evaluation;$('evaluation').innerHTML='ACCURACY ON 20 TEST PLANETS<br><strong>'+pct(ev.accuracy)+'</strong> · K='+mission.k+' · '+e(mission.focus)+' focus<small class="scores">'+Object.entries(ev.scores).map(([n,v])=>'K'+n+': '+pct(v)).join(' &nbsp; | &nbsp; ')+'</small><p class="muted">Baseline '+pct(ev.baseline)+'. These are real Python KNN test results, not guaranteed mining outcomes.</p>'}
+if(mission.evaluation){const ev=mission.evaluation;$('evaluation').innerHTML='ACCURACY <strong>'+pct(ev.accuracy)+'</strong> · ORE PRECISION <strong>'+pct(ev.precision)+'</strong><br><small>K='+mission.k+' · '+e(mission.focus)+' focus</small><small class="scores">'+Object.entries(ev.scores).map(([n,v])=>'K'+n+': '+pct(v)).join(' &nbsp; | &nbsp; ')+'</small><p class="muted">Baseline '+pct(ev.baseline)+'. Accuracy is the percentage of all correct answers; precision measures the fraction of ORE predictions that actually contained ore. More verified training examples may help.</p>'}
 else $('evaluation').innerHTML='TEST ACCURACY<br><strong>Not trained</strong>';
 renderMap();renderDetails();renderVoterEvidence();renderDecision();renderLab();renderTutorial();renderChallenges();renderDebrief();renderTrainingJourney();
 const best=rank();
