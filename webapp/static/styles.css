@@ -151,3 +151,15 @@
 .training-chip{display:inline-block;border:1px solid #446d94;background:#163554;border-radius:8px;padding:6px;margin:3px;font-size:10px;color:#c9e6f6}
 @media(max-width:1120px){.explore-layout{grid-template-columns:1fr}.explore-layout>.intel{max-width:none}.training-layout{grid-template-columns:1fr 1fr}.game-tab-panels{min-height:520px}}
 @media(max-width:760px){.game-tabs{gap:4px;padding:0 8px}.game-tab{min-width:0;flex:1;font-size:11px;padding:12px 4px}.game-tab-panels{padding:12px;border-radius:0 0 12px 12px}.training-layout{grid-template-columns:1fr}.explore-layout .map{height:470px}#page-missions .challenge-grid{grid-template-columns:1fr}}
+
+
+/* V0.7 — release number visible on every screen and tab controls remain usable. */
+.version-flag{display:inline-flex;align-items:center;border:1px solid #6ae6ff;color:#baf6ff!important;background:linear-gradient(120deg,#125b77,#292c73);border-radius:7px;padding:6px 9px;margin-right:11px;font-size:12px;letter-spacing:1px;vertical-align:middle;box-shadow:0 0 15px #31c7fc42}
+.startup-version{position:absolute;left:18px;top:18px;color:#baf6ff;font-size:11px;letter-spacing:1.1px;border:1px solid #62bce3;padding:5px 9px;border-radius:6px;background:#16304f}
+.game-tabs{position:sticky;top:0;z-index:12;background:#0b162c;padding-top:9px;border-radius:12px 12px 0 0;box-shadow:0 -3px 10px #090e1b}
+.game-tab{font-size:15px;padding:16px 24px}
+.game-tab:focus-visible{outline:3px solid #73ebdf;outline-offset:2px}
+#page-explore:not([hidden]),#page-train:not([hidden]),#page-missions:not([hidden]){display:block}
+#page-train .training-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+#page-train .training-stats strong{font-size:21px}
+@media(max-width:760px){.version-flag{font-size:10px;padding:4px 7px;margin-right:5px}.game-tabs{padding:6px 8px 0}.game-tab{font-size:11px;padding:13px 5px}}
