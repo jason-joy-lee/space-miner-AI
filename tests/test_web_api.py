@@ -29,7 +29,7 @@ def test_no_hidden_labels_until_mined():
     assert "ore" not in detail["planet"]
     assert detail["trained"] is False
     m=client.post(endpoint(m,"train"),json={"k":3}).json()
-    assert m["evaluation"]["accuracy"] == .55  # deliberately undertrained starter model
+    assert m["evaluation"]["accuracy"] == .35  # initial model has many false-positive ore predictions
     assert m["evaluation"]["accuracy"] <= m["evaluation"]["baseline"]  # initial bias is the challenge
     detail=client.get(endpoint(m,f"inspect/{p['id']}")).json()
     assert "ore" not in detail["planet"]
