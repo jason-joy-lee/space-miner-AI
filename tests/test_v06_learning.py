@@ -66,5 +66,14 @@ def test_top_tabs_preserve_game_and_existing_learning_controls():
     assert "function setPage(name)" in JS
     assert "function renderTrainingJourney()" in JS
     assert "renderTrainingJourney();" in JS
-    assert "appendChild(document.querySelector('.central'))" in JS
-    assert "appendChild(document.querySelector('.intel'))" in JS
+    # V0.7 deliberately removed runtime reparenting, which had hidden the tabs.
+    assert "appendChild(document.querySelector('.central'))" not in JS
+    assert "appendChild(document.querySelector('.intel'))" not in JS
+    explore=HTML.split('id="page-explore"',1)[1].split('id="page-train"',1)[0]
+    training=HTML.split('id="page-train"',1)[1].split('id="page-missions"',1)[0]
+    missions=HTML.split('id="page-missions"',1)[1].split('<footer>',1)[0]
+    assert 'class="central"' in explore
+    assert 'class="panel intel"' in explore
+    assert 'id="train"' in training
+    assert 'class="lab-panel"' in training
+    assert 'class="challenge-board"' in missions
