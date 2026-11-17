@@ -25,7 +25,7 @@ $('train').textContent='⚡ '+(mission.trained&&k===mission.k&&focus===mission.f
 $('tip').innerHTML=mission.trained?(k===mission.k&&focus===mission.focus?'AI ONLINE: inspect its real voters, make a guess, then mine.':'K changed. Click TRAIN again to update predictions.'):'STEP 1: click TRAIN AI to reveal the ore predictions.';
 if(mission.evaluation){const ev=mission.evaluation;$('evaluation').innerHTML='ACCURACY ON 20 TEST PLANETS<br><strong>'+pct(ev.accuracy)+'</strong> · K='+mission.k+' · '+e(mission.focus)+' focus<small class="scores">'+Object.entries(ev.scores).map(([n,v])=>'K'+n+': '+pct(v)).join(' &nbsp; | &nbsp; ')+'</small><p class="muted">Baseline '+pct(ev.baseline)+'. These are real Python KNN test results, not guaranteed mining outcomes.</p>'}
 else $('evaluation').innerHTML='TEST ACCURACY<br><strong>Not trained</strong>';
-renderMap();renderDetails();renderVoterEvidence();renderLab();renderTutorial();
+renderMap();renderDetails();renderVoterEvidence();renderLab();renderTutorial();renderChallenges();renderDebrief();
 const best=rank();
 if(best&&!mission.finished){show('recommend');$('recommend').innerHTML='<small>AI TOP RECOMMENDATION</small><strong>'+e(best.id)+'</strong><p>'+best.ore_votes+'/'+mission.k+' known neighbors have ore. Not a probability.</p><button id="inspect-best" class="outline wide">INSPECT THIS PLANET</button>';$('inspect-best').onclick=()=>choose(best.id)}else hide('recommend');
 $('history').innerHTML=mission.history.length?mission.history.map(r=>'<span class="chip '+(r.ore?'good':'bad')+'">'+e(r.planet_id)+' '+(r.ore?'◆ ORE':'◌ EMPTY')+' '+(r.delta>0?'+':'')+r.delta+'</span>').join(''):'No discoveries yet.';
@@ -93,6 +93,20 @@ mission.training.forEach(n=>svg+='<circle cx="'+X(n.heat)+'" cy="'+Y(n.spectrum)
 svg+='<circle cx="'+X(p.heat)+'" cy="'+Y(p.spectrum)+'" r="11" fill="#fff" stroke="#28c9f2" stroke-width="3"/><text x="270" y="307" fill="#abc8e9" text-anchor="middle" font-size="12">HEAT</text><text x="15" y="165" fill="#abc8e9" transform="rotate(-90 15 165)" font-size="12">SPECTRUM</text></svg>';
 $('mathplot').innerHTML=svg;$('neighbors').innerHTML=d.neighbors.map(n=>'<span class="neighbor">'+e(n.id)+' · '+(n.ore?'ORE':'EMPTY')+' · distance '+n.distance+'</span>').join('');show('learn')})}
 
+function renderChallenges(){
+if(!mission)return;
+const challenges=mission.challenges||[];
+const done=challenges.filter(c=>c.completed).length;
+$('challenge-count').textContent=done+' / '+challenges.length+' completed';
+$('challenges').innerHTML=challenges.map(c=>'<div class="challenge '+(c.completed?'completed':'')+'"><div class="challenge-symbol">'+(c.completed?'✓':'◇')+'</div><div class="challenge-info"><b>'+e(c.name)+'</b><small>'+e(c.objective)+'</small><span>'+e(c.hint)+'</span></div></div>').join('');
+}
+function renderDebrief(){
+const panel=$('debrief'),d=mission?.debrief;
+if(!d){panel.hidden=true;return}
+panel.hidden=false;
+const hint=d.prediction_correct?'CORRECT AI PREDICTION':'AI PREDICTION ERROR — INVESTIGATE';
+panel.innerHTML='<div class="debrief-title">'+(d.prediction_correct?'✓':'!')+' '+e(hint)+' · '+e(d.planet_id)+'</div><p>'+e(d.analysis)+'</p><b>TRY NEXT:</b><ol>'+d.next_steps.map(x=>'<li>'+e(x)+'</li>').join('')+'</ol><div class="debrief-neighbors">Previous voters: '+e(d.voter_ids.join(', ')||'none')+'</div>';
+}
 const tutorialScript=[
 ["Welcome, cadet","Your mission: understand the real evidence before taking risks. Start by reading a training report; scan, train, inspect, predict and improve."],
 ["Train your first model","Choose K=3, then press TRAIN AI. The AI uses known labels and the two synthetic sensor readings."],
