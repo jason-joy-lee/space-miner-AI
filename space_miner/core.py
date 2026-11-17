@@ -80,6 +80,33 @@ def accuracy(training, validation, k, focus="balanced"):
     return sum(knn(training, p, k, focus)[0] == p.ore for p in validation) / len(validation)
 
 
+def classification_metrics(training, validation, k, focus="balanced"):
+    """Held-out evaluation of ore as the positive class.
+
+    Precision = true ore among all predicted ore. When the model never
+    predicts ore, precision is 0 by explicit convention (undefined otherwise).
+    """
+    if not validation:
+        raise ValueError("Validation must not be empty")
+    predicted=[knn(training,p,k,focus)[0] for p in validation]
+    true_positive=sum(pred and p.ore for pred,p in zip(predicted,validation))
+    false_positive=sum(pred and not p.ore for pred,p in zip(predicted,validation))
+    true_negative=sum(not pred and not p.ore for pred,p in zip(predicted,validation))
+    false_negative=sum(not pred and p.ore for pred,p in zip(predicted,validation))
+    total=len(validation)
+    positive=true_positive+false_positive
+    return {
+        "accuracy":(true_positive+true_negative)/total,
+        "precision":true_positive/positive if positive else 0.0,
+        "true_positive":true_positive,
+        "false_positive":false_positive,
+        "true_negative":true_negative,
+        "false_negative":false_negative,
+        "predicted_ore":positive,
+        "total":total,
+    }
+
+
 def baseline(training, validation):
     if not training or not validation:
         raise ValueError("Training and validation data cannot be empty")

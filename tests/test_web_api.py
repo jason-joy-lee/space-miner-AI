@@ -29,7 +29,7 @@ def test_no_hidden_labels_until_mined():
     assert "ore" not in detail["planet"]
     assert detail["trained"] is False
     m=client.post(endpoint(m,"train"),json={"k":3}).json()
-    assert m["evaluation"]["accuracy"] == .55  # deliberately undertrained starter model
+    assert m["evaluation"]["accuracy"] == .35  # initial model has many false-positive ore predictions
     assert m["evaluation"]["accuracy"] <= m["evaluation"]["baseline"]  # initial bias is the challenge
     detail=client.get(endpoint(m,f"inspect/{p['id']}")).json()
     assert "ore" not in detail["planet"]
@@ -42,14 +42,16 @@ def test_no_hidden_labels_until_mined():
 def test_real_training_changes_recommendations():
     m=start()
     before=client.post(endpoint(m,"train"),json={"k":3}).json()
-    assert before["evaluation"]["accuracy"]==.55
+    assert before["evaluation"]["accuracy"]==.35
     for item in list(before["reserve"]):
         m=client.post(endpoint(m,"scan"),json={"planet_id":item["id"]}).json()
     after=client.post(endpoint(m,"train"),json={"k":3}).json()
     assert after["evaluation"]["accuracy"]==.85
+    assert after["evaluation"]["precision"]==.75
+    assert before["evaluation"]["precision"]==.35
     assert any(x.get("predicted") != y.get("predicted")
                for x,y in zip(before["candidates"],after["candidates"]))
-    assert after["training_history"][-1]["accuracy_delta"]==.30
+    assert after["training_history"][-1]["accuracy_delta"]==.50
 
 def test_scan_is_training_only_and_invalidates_model():
     m=start()

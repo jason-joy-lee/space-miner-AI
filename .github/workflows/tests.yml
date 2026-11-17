@@ -2,7 +2,7 @@ name: Python tests
 on:
   pull_request:
   push:
-    branches: [main, feat/playable-v0-1, feat/playable-v0-4, feat/playable-v0-5, feat/playable-v0-6]
+    branches: [main, feat/playable-v0-1, feat/playable-v0-4, feat/playable-v0-5, feat/playable-v0-6, feat/playable-v0-7]
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -12,6 +12,8 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r requirements.txt -r requirements-web.txt
+      - run: python -m pip install 'playwright>=1.57,<2'
+      - run: python -m playwright install --with-deps chromium
       - run: python -m compileall -q app.py space_miner webapp tests
       - run: node --check webapp/static/game.js
       - run: python -m pytest -q

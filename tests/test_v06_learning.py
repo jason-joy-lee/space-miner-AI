@@ -20,7 +20,7 @@ def test_default_challenge_has_real_errors_then_improves_with_data():
     }
     weak=accuracy(g["starter"],g["validation"],3)
     stronger=accuracy(g["starter"]+g["reserve"],g["validation"],3)
-    assert weak==.55
+    assert weak==.35
     assert stronger==.85
     assert stronger-weak>=.20
     assert g==novice_galaxy(12)
@@ -36,7 +36,7 @@ def test_training_history_is_server_derived_without_target_labels():
     root=f"/api/missions/{m['session_id']}"
     assert m["training_history"]==[]
     first=client.post(root+"/train",json={"k":3,"focus":"balanced"}).json()
-    assert first["training_history"][0]["accuracy"]==.55
+    assert first["training_history"][0]["accuracy"]==.35
     assert "predictions" not in first["training_history"][0]
     assert first["training_history"][0]["changed_count"] is None
     after=first
@@ -48,20 +48,31 @@ def test_training_history_is_server_derived_without_target_labels():
     assert len(history)==2
     assert history[1]["training_count"]==14
     assert history[1]["accuracy"]==.85
-    assert history[1]["accuracy_delta"]==.30
+    assert history[1]["accuracy_delta"]==.50
     assert history[1]["changed_count"]>=1
+    assert history[0]["precision"]==.35
+    assert history[1]["precision"]==.75
+    assert history[1]["precision_delta"]==.40
     assert all("predictions" not in h for h in history)
 
 
 def test_top_tabs_preserve_game_and_existing_learning_controls():
     assert HTML.index('data-page="explore"')<HTML.index('data-page="train"')<HTML.index('data-page="missions"')
-    for element in ("page-explore","page-train","page-missions","explore-map",
-                    "explore-intel","train-controls","train-lab","mission-tasks",
-                    "training-journey"):
+    for element in ("page-explore","page-train","page-missions",
+                    "mission-tasks","training-journey"):
         assert 'id="'+element+'"' in HTML
     assert "function initializeTabs()" in JS
     assert "function setPage(name)" in JS
     assert "function renderTrainingJourney()" in JS
     assert "renderTrainingJourney();" in JS
-    assert "appendChild(document.querySelector('.central'))" in JS
-    assert "appendChild(document.querySelector('.intel'))" in JS
+    # V0.7 deliberately removed runtime reparenting, which had hidden the tabs.
+    assert "appendChild(document.querySelector('.central'))" not in JS
+    assert "appendChild(document.querySelector('.intel'))" not in JS
+    explore=HTML.split('id="page-explore"',1)[1].split('id="page-train"',1)[0]
+    training=HTML.split('id="page-train"',1)[1].split('id="page-missions"',1)[0]
+    missions=HTML.split('id="page-missions"',1)[1].split('<footer>',1)[0]
+    assert 'class="central"' in explore
+    assert 'class="panel intel"' in explore
+    assert 'id="train"' in training
+    assert 'class="lab-panel"' in training
+    assert 'class="challenge-board"' in missions
